@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Trend Analysis - QuantCore{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-4 mb-6">
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Symbol</label>
+        <select id="symbol-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Interval</label>
+        <select id="interval-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="15m">15 Minutes</option>
+            <option value="30m">30 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="1d" selected>1 Day</option>
+            <option value="1wk">1 Week</option>
+        </select>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Time Period</label>
+        <select id="period-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
+            <option value="1y" selected>1 Year</option>
+        </select>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Current Price</h3>
+        <p class="text-3xl font-bold text-blue-400" id="current-price">-</p>
+        <p class="text-sm" id="price-change">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Trend</h3>
+        <p class="text-3xl font-bold" id="current-trend">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Z-Score</h3>
+        <p class="text-3xl font-bold text-yellow-400" id="current-zscore">-</p>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4">Price Chart with Moving Averages</h2>
+    <div id="price-chart" style="height: 500px;"></div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Trading Signals</h2>
+    <div id="signals-table" class="overflow-x-auto"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSymbol = 'AAPL';
+
+const intervalPeriodMap = {
+    "1m": ["1d", "5d", "7d"],
+    "5m": ["1d", "5d", "1mo", "2mo"],
+    "15m": ["1d", "5d", "1mo", "2mo"],
+    "30m": ["1d", "5d", "1mo", "2mo"],
+    "1h": ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
+    "1d": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"],
+    "1wk": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"]
+};
+
+const periodText = {
+    "1d": "1 Day", "5d": "5 Days", "7d": "7 Days", "1mo": "1 Month", "2mo": "2 Months",
+    "3mo": "3 Months", "6mo": "6 Months", "ytd": "YTD", "1y": "1 Year",
+    "2y": "2 Years", "5y": "5 Years", "max": "Max"
+};
+
+function updatePeriodOptions() {
+    const interval = document.getElementById('interval-select').value;
+    const periodSelect = document.getElementById('period-select');
+    const validPeriods = intervalPeriodMap[interval] || intervalPeriodMap["1d"];
+
+    const currentPeriod = periodSelect.value;
+    periodSelect.innerHTML = '';
+
+    validPeriods.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.text = periodText[p] || p;
+        if (p === currentPeriod) opt.selected = true;
+        periodSelect.appendChild(opt);
+    });
+
+    if (!validPeriods.includes(periodSelect.value)) {
+        periodSelect.value = validPeriods[validPeriods.length - 1];
+    }
+}
+
+async function loadSymbols() {
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+    const select = document.getElementById('symbol-select');
+    select.innerHTML = '';
+    symbols.forEach(s => {
+        select.innerHTML += `<option value="${s}" ${s === currentSymbol ? 'selected' : ''}>${s}</option>`;
+    });
+}
+
+async function loadTrend() {
+    const symbol = document.getElementById('symbol-select').value;
+    const period = document.getElementById('period-select').value;
+    const interval = document.getElementById('interval-select').value;
+    currentSymbol = symbol;
+
+    const data = await fetch(`/api/trend/${symbol}?period=${period}&interval=${interval}`).then(r => r.json());
+    if (data.error) { alert(data.error); return; }
+
+    document.getElementById('current-price').textContent = `$${data.current_price.toFixed(2)}`;
+    const changeEl = document.getElementById('price-change');
+    changeEl.textContent = `${data.price_change > 0 ? '+' : ''}${data.price_change.toFixed(2)}%`;
+    changeEl.className = `text-sm ${data.price_change > 0 ? 'text-green-400' : 'text-red-400'}`;
+
+    const trendEl = document.getElementById('current-trend');
+    trendEl.textContent = data.current_trend;
+    trendEl.className = `text-3xl font-bold ${data.current_trend === 'BULLISH' ? 'text-green-400' : 'text-red-400'}`;
+
+    const zscoreVal = data.zscore && data.zscore.length > 0 ? data.zscore[data.zscore.length - 1] : 0;
+    document.getElementById('current-zscore').textContent = zscoreVal.toFixed(2);
+
+    const traces = [
+        { x: data.dates, y: data.prices, type: 'scatter', mode: 'lines', name: 'Price', line: {color: '#3b82f6', width: 2} },
+        { x: data.dates, y: data.sma_20, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} },
+        { x: data.dates, y: data.sma_50, type: 'scatter', mode: 'lines', name: 'SMA 50', line: {color: '#f59e0b', width: 1, dash: 'dash'} }
+    ];
+
+    const buySignals = data.signals.filter(s => s.type === 'BUY');
+    const sellSignals = data.signals.filter(s => s.type === 'SELL');
+    if (buySignals.length > 0) traces.push({ x: buySignals.map(s => s.date), y: buySignals.map(s => s.price), type: 'scatter', mode: 'markers', name: 'BUY', marker: {color: '#10b981', size: 14, symbol: 'triangle-up'} });
+    if (sellSignals.length > 0) traces.push({ x: sellSignals.map(s => s.date), y: sellSignals.map(s => s.price), type: 'scatter', mode: 'markers', name: 'SELL', marker: {color: '#ef4444', size: 14, symbol: 'triangle-down'} });
+
+    const allY = [...data.prices, ...data.sma_20, ...data.sma_50, ...data.signals.map(s => s.price)].filter(v => v != null && !isNaN(v));
+    const minY = Math.min(...allY);
+    const maxY = Math.max(...allY);
+    const yPadding = (maxY - minY) * 0.05;
+
+    const layout = {
+        paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+        xaxis: { gridcolor: '#374151', autorange: true, rangeslider: { visible: false } },
+        yaxis: { gridcolor: '#374151', range: [minY - yPadding, maxY + yPadding], rangemode: 'normal' },
+        margin: {t: 20, b: 40, l: 60, r: 20}, legend: {orientation: 'h', y: 1.1, x: 0.5}, hovermode: 'x unified'
+    };
+
+    Plotly.newPlot('price-chart', traces, layout, {responsive: true});
+
+    const tableDiv = document.getElementById('signals-table');
+    let tableHTML = '<table class="w-full"><thead><tr class="border-b border-gray-700"><th class="text-left py-2">Date/Time</th><th class="text-left py-2">Type</th><th class="text-right py-2">Price</th></tr></thead><tbody>';
+    data.signals.slice().reverse().forEach(sig => {
+        const color = sig.type === 'BUY' ? 'text-green-400' : 'text-red-400';
+        tableHTML += `<tr class="border-b border-gray-700"><td class="py-2">${sig.date}</td><td class="py-2 ${color} font-bold">${sig.type}</td><td class="py-2 text-right">$${sig.price.toFixed(2)}</td></tr>`;
+    });
+    tableHTML += '</tbody></table>';
+    tableDiv.innerHTML = tableHTML;
+}
+
+document.getElementById('symbol-select').addEventListener('change', loadTrend);
+document.getElementById('interval-select').addEventListener('change', () => { updatePeriodOptions(); loadTrend(); });
+document.getElementById('period-select').addEventListener('change', loadTrend);
+
+updatePeriodOptions();
+loadSymbols().then(() => loadTrend());
+</script>
+{% endblock %}

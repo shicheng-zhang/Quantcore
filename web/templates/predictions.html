@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Predictions - QuantCore{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-4 mb-6">
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Symbol</label>
+        <select id="symbol-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Interval</label>
+        <select id="interval-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="15m">15 Minutes</option>
+            <option value="30m">30 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="1d" selected>1 Day</option>
+            <option value="1wk">1 Week</option>
+        </select>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Historical Context</label>
+        <select id="period-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
+            <option value="1y" selected>1 Year</option>
+        </select>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Current Price</h3>
+        <p class="text-3xl font-bold text-blue-400" id="current-price">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Recommendation</h3>
+        <p class="text-3xl font-bold" id="recommendation">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Z-Score</h3>
+        <p class="text-3xl font-bold text-yellow-400" id="zscore">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Volatility</h3>
+        <p class="text-3xl font-bold text-purple-400" id="volatility">-</p>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4">Historical Context</h2>
+    <div id="context-chart" style="height: 400px;"></div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4">5-Step Price Forecast</h2>
+    <div id="forecast-chart" style="height: 400px;"></div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Detailed Predictions</h2>
+    <div id="predictions-table"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSymbol = 'AAPL';
+
+const intervalPeriodMap = {
+    "1m": ["1d", "5d", "7d"],
+    "5m": ["1d", "5d", "1mo", "2mo"],
+    "15m": ["1d", "5d", "1mo", "2mo"],
+    "30m": ["1d", "5d", "1mo", "2mo"],
+    "1h": ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
+    "1d": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"],
+    "1wk": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"]
+};
+
+const periodText = {
+    "1d": "1 Day", "5d": "5 Days", "7d": "7 Days", "1mo": "1 Month", "2mo": "2 Months",
+    "3mo": "3 Months", "6mo": "6 Months", "ytd": "YTD", "1y": "1 Year",
+    "2y": "2 Years", "5y": "5 Years", "max": "Max"
+};
+
+function updatePeriodOptions() {
+    const interval = document.getElementById('interval-select').value;
+    const periodSelect = document.getElementById('period-select');
+    const validPeriods = intervalPeriodMap[interval] || intervalPeriodMap["1d"];
+
+    const currentPeriod = periodSelect.value;
+    periodSelect.innerHTML = '';
+
+    validPeriods.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.text = periodText[p] || p;
+        if (p === currentPeriod) opt.selected = true;
+        periodSelect.appendChild(opt);
+    });
+
+    if (!validPeriods.includes(periodSelect.value)) {
+        periodSelect.value = validPeriods[validPeriods.length - 1];
+    }
+}
+
+async function loadSymbols() {
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+    const select = document.getElementById('symbol-select');
+    select.innerHTML = '';
+    symbols.forEach(s => {
+        select.innerHTML += `<option value="${s}" ${s === currentSymbol ? 'selected' : ''}>${s}</option>`;
+    });
+}
+
+async function loadPredictions() {
+    const symbol = document.getElementById('symbol-select').value;
+    const period = document.getElementById('period-select').value;
+    const interval = document.getElementById('interval-select').value;
+    currentSymbol = symbol;
+
+    const data = await fetch(`/api/predictions/${symbol}?period=${period}&interval=${interval}`).then(r => r.json());
+    if (data.error) { alert(data.error); return; }
+
+    document.getElementById('current-price').textContent = `$${data.current_price.toFixed(2)}`;
+    const recEl = document.getElementById('recommendation');
+    recEl.textContent = data.recommendation;
+    recEl.className = `text-3xl font-bold ${data.recommendation === 'BUY' ? 'text-green-400' : data.recommendation === 'SELL' ? 'text-red-400' : 'text-yellow-400'}`;
+    document.getElementById('zscore').textContent = data.zscore.toFixed(2);
+    document.getElementById('volatility').textContent = data.volatility.toFixed(2);
+
+    if (data.historical) {
+        const h = data.historical;
+        const traces = [
+            { x: h.dates, y: h.prices, type: 'scatter', mode: 'lines', name: 'Price', line: {color: '#3b82f6', width: 2} },
+            { x: h.dates, y: h.sma_20, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} }
+        ];
+
+        const allY = [...h.prices, ...h.sma_20].filter(v => v != null && !isNaN(v));
+        const minY = Math.min(...allY);
+        const maxY = Math.max(...allY);
+        const yPadding = (maxY - minY) * 0.05;
+
+        Plotly.newPlot('context-chart', traces, {
+            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+            xaxis: { gridcolor: '#374151', autorange: true, rangeslider: { visible: false } },
+            yaxis: { gridcolor: '#374151', range: [minY - yPadding, maxY + yPadding], rangemode: 'normal' },
+            margin: {t: 20, b: 40, l: 60, r: 20}, legend: {orientation: 'h', y: 1.1, x: 0.5}, hovermode: 'x unified'
+        }, {responsive: true});
+    }
+
+    const days = data.predictions.map(p => `Step ${p.day}`);
+    const prices = data.predictions.map(p => p.price);
+    const forecastTraces = [{
+        x: days, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Predicted Price',
+        line: {color: '#8b5cf6', width: 3}, marker: {size: 10, color: '#8b5cf6'}
+    }];
+
+    const fMinY = Math.min(...prices, data.current_price);
+    const fMaxY = Math.max(...prices, data.current_price);
+    const fPadding = (fMaxY - fMinY) * 0.1;
+
+    Plotly.newPlot('forecast-chart', forecastTraces, {
+        paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+        xaxis: {gridcolor: '#374151'}, yaxis: {gridcolor: '#374151', range: [fMinY - fPadding, fMaxY + fPadding]},
+        margin: {t: 20, b: 40, l: 60, r: 20}
+    }, {responsive: true});
+
+    const tableDiv = document.getElementById('predictions-table');
+    let tableHTML = '<table class="w-full"><thead><tr class="border-b border-gray-700"><th class="text-left py-2">Step</th><th class="text-right py-2">Predicted Price</th><th class="text-right py-2">Change</th><th class="text-right py-2">Confidence</th></tr></thead><tbody>';
+    data.predictions.forEach(p => {
+        const change = ((p.price - data.current_price) / data.current_price * 100);
+        const changeColor = change > 0 ? 'text-green-400' : 'text-red-400';
+        tableHTML += `<tr class="border-b border-gray-700">
+            <td class="py-2">Step ${p.day}</td>
+            <td class="py-2 text-right">$${p.price.toFixed(2)}</td>
+            <td class="py-2 text-right ${changeColor}">${change > 0 ? '+' : ''}${change.toFixed(2)}%</td>
+            <td class="py-2 text-right">${(p.confidence * 100).toFixed(0)}%</td>
+        </tr>`;
+    });
+    tableHTML += '</tbody></table>';
+    tableDiv.innerHTML = tableHTML;
+}
+
+document.getElementById('symbol-select').addEventListener('change', loadPredictions);
+document.getElementById('interval-select').addEventListener('change', () => { updatePeriodOptions(); loadPredictions(); });
+document.getElementById('period-select').addEventListener('change', loadPredictions);
+
+updatePeriodOptions();
+loadSymbols().then(() => loadPredictions());
+</script>
+{% endblock %}

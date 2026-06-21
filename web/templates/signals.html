@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Trading Signals - QuantCore{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Recent Trading Signals</h2>
+    <div id="signals-container"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadSignals() {
+    const signals = await fetch('/api/signals').then(r => r.json());
+
+    const container = document.getElementById('signals-container');
+    let html = '<table class="w-full"><thead><tr class="border-b border-gray-700"><th class="text-left py-3">Date</th><th class="text-left py-3">Symbol</th><th class="text-left py-3">Signal</th><th class="text-right py-3">Price</th></tr></thead><tbody>';
+
+    signals.forEach(sig => {
+        const color = sig.type === 'BUY' ? 'text-green-400' : 'text-red-400';
+        const icon = sig.type === 'BUY' ? '▲' : '▼';
+        html += `<tr class="border-b border-gray-700 hover:bg-gray-700">
+            <td class="py-3">${sig.date}</td>
+            <td class="py-3 font-medium">${sig.symbol}</td>
+            <td class="py-3 ${color} font-bold">${icon} ${sig.type}</td>
+            <td class="py-3 text-right">$${sig.price.toFixed(2)}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+loadSignals();
+setInterval(loadSignals, 10000); // Refresh every 10 seconds
+</script>
+{% endblock %}

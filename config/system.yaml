@@ -1,0 +1,17 @@
+system:
+  database_path: "data/analytics.db"
+data:
+  parquet_views:
+    market_data: "data/raw/equities/"
+risk:
+  max_position_pct: 0.05
+  max_daily_loss_pct: 0.03
+  max_drawdown_pct: 0.10
+nlp:
+  enabled: false
+  model_path: "data/models/llama-3-8b-instruct.Q4_K_M.gguf"
+strategies:
+  stat_arb:
+    pairs: [["AAPL", "MSFT"], ["GOOGL", "META"]]
+    entry_zscore: 2.0
+    lookback: 100

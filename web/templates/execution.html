@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Execution Algos - QuantCore{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4">Institutional Execution Simulator</h2>
+    <p class="text-gray-400 mb-6">Simulate slicing a large parent order to minimize market impact and slippage.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Symbol</label>
+            <select id="exec-symbol" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white"></select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Target Shares</label>
+            <input type="number" id="exec-shares" value="10000" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Execution Algo</label>
+            <select id="exec-algo" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white">
+                <option value="MARKET">Market Order (Retail)</option>
+                <option value="TWAP">TWAP (Time-Weighted)</option>
+                <option value="VWAP" selected>VWAP (Volume-Weighted)</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button onclick="runExecution()" id="exec-btn" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded font-bold w-full">Simulate Execution</button>
+        </div>
+    </div>
+</div>
+
+<div id="results-container" class="hidden">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-blue-500">
+            <h3 class="text-sm font-medium text-gray-400">Benchmark VWAP</h3>
+            <p class="text-2xl font-bold text-white" id="res-vwap">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-purple-500">
+            <h3 class="text-sm font-medium text-gray-400">Avg Execution Price</h3>
+            <p class="text-2xl font-bold text-white" id="res-avg">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-yellow-500">
+            <h3 class="text-sm font-medium text-gray-400">Slippage (bps)</h3>
+            <p class="text-2xl font-bold" id="res-slip">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-green-500">
+            <h3 class="text-sm font-medium text-gray-400">Capital Saved vs Market</h3>
+            <p class="text-2xl font-bold text-green-400" id="res-saved">-</p>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Execution Analysis</h2>
+        <div id="exec-analysis" class="text-gray-300"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadSymbols() {
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+    const select = document.getElementById('exec-symbol');
+    symbols.forEach(s => select.innerHTML += `<option value="${s}">${s}</option>`);
+}
+
+async function runExecution() {
+    const btn = document.getElementById('exec-btn');
+    btn.innerText = "Simulating..."; btn.disabled = true;
+
+    const payload = {
+        symbol: document.getElementById('exec-symbol').value,
+        shares: parseInt(document.getElementById('exec-shares').value),
+        algo: document.getElementById('exec-algo').value
+    };
+
+    try {
+        const res = await fetch('/api/execution/simulate', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        document.getElementById('results-container').classList.remove('hidden');
+        document.getElementById('res-vwap').textContent = `$${data.benchmark_vwap.toFixed(2)}`;
+        document.getElementById('res-avg').textContent = `$${data.avg_execution_price.toFixed(2)}`;
+
+        const slipEl = document.getElementById('res-slip');
+        slipEl.textContent = `${data.slippage_bps} bps`;
+        slipEl.className = `text-2xl font-bold ${data.slippage_bps < 5 ? 'text-green-400' : data.slippage_bps < 10 ? 'text-yellow-400' : 'text-red-400'}`;
+
+        document.getElementById('res-saved').textContent = `$${data.savings_vs_market.toLocaleString()}`;
+
+        let analysis = "";
+        if (data.algo === "MARKET") {
+            analysis = `<p class="text-red-400 font-bold">⚠️ Market Order Impact:</p><p>Dumping ${data.target_shares.toLocaleString()} shares into the market at once resulted in ${data.slippage_bps} basis points of slippage. HFT algorithms detected your liquidity demand and front-ran your order, artificially inflating your fill price.</p>`;
+        } else if (data.algo === "TWAP") {
+            analysis = `<p class="text-yellow-400 font-bold">⏱️ TWAP Execution:</p><p>Sliced the order evenly across time. While better than a market order, TWAP ignores natural market liquidity, potentially executing heavily during low-volume lunch hours, causing localized price impact.</p>`;
+        } else {
+            analysis = `<p class="text-green-400 font-bold">🏛️ VWAP Execution (Institutional Standard):</p><p>Dynamically sliced the order proportional to historical intraday volume. By matching the market's natural rhythm, your footprint was hidden, resulting in only ${data.slippage_bps} bps of slippage and saving <span class="text-green-400 font-bold">$${data.savings_vs_market.toLocaleString()}</span> compared to a retail market order.</p>`;
+        }
+        document.getElementById('exec-analysis').innerHTML = analysis;
+
+    } catch(e) { alert(e); }
+    finally { btn.innerText = "Simulate Execution"; btn.disabled = false; }
+}
+
+loadSymbols();
+</script>
+{% endblock %}

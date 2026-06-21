@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - QuantCore{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Total Symbols</h3>
+        <p class="text-3xl font-bold text-blue-400" id="total-symbols">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Active Strategies</h3>
+        <p class="text-3xl font-bold text-green-400">2</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">System Status</h3>
+        <p class="text-3xl font-bold text-green-400" id="system-status">Active</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-400">Last Update</h3>
+        <p class="text-lg font-bold text-gray-300" id="last-update">-</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Latest Prices</h2>
+        <div id="latest-prices" class="space-y-3"></div>
+    </div>
+
+
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Manage Universe</h2>
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="new-symbol" placeholder="e.g. TSLA" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 flex-grow text-white">
+            <button onclick="addSymbol()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold">Add</button>
+        </div>
+        <div id="universe-list" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div>
+    </div>
+
+
+        <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Recent Signals</h2>
+        <div id="recent-signals" class="space-y-2"></div>
+    </div>
+</div>
+
+<div class="mt-6 bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Performance Metrics</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="performance-metrics"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDashboard() {
+    try {
+        
+        // Populate Universe List
+        const symbols = await fetch('/api/symbols').then(r => r.json());
+        const universeDiv = document.getElementById('universe-list');
+        universeDiv.innerHTML = '';
+        symbols.forEach(s => {
+            universeDiv.innerHTML += `
+                <div class="flex justify-between items-center bg-gray-700 rounded px-3 py-1">
+                    <span class="font-medium">${s}</span>
+                    <button onclick="removeSymbol('${s}')" class="text-red-400 hover:text-red-300 font-bold">✕</button>
+                </div>`;
+        });
+
+        const overview = await fetch('/api/overview').then(r => r.json());
+        const signals = await fetch('/api/signals').then(r => r.json());
+        const performance = await fetch('/api/performance').then(r => r.json());
+
+        document.getElementById('total-symbols').textContent = overview.total_symbols;
+        document.getElementById('last-update').textContent = new Date(overview.last_update).toLocaleString();
+
+        // Latest prices
+        const pricesDiv = document.getElementById('latest-prices');
+        pricesDiv.innerHTML = '';
+        for (const [symbol, price] of Object.entries(overview.latest_prices)) {
+            pricesDiv.innerHTML += `
+                <div class="flex justify-between items-center">
+                    <span class="font-medium">${symbol}</span>
+                    <span class="text-green-400">$${price.toFixed(2)}</span>
+                </div>
+            `;
+        }
+
+        // Recent signals
+        const signalsDiv = document.getElementById('recent-signals');
+        signalsDiv.innerHTML = '';
+        signals.slice(0, 5).forEach(sig => {
+            const color = sig.type === 'BUY' ? 'text-green-400' : 'text-red-400';
+            signalsDiv.innerHTML += `
+                <div class="flex justify-between items-center text-sm">
+                    <span>${sig.symbol}</span>
+                    <span class="${color} font-bold">${sig.type}</span>
+                    <span class="text-gray-400">$${sig.price.toFixed(2)}</span>
+                </div>
+            `;
+        });
+
+        // Performance metrics
+        const metricsDiv = document.getElementById('performance-metrics');
+        metricsDiv.innerHTML = '';
+        for (const [key, value] of Object.entries(performance)) {
+            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            metricsDiv.innerHTML += `
+                <div class="bg-gray-700 rounded p-3">
+                    <div class="text-xs text-gray-400">${label}</div>
+                    <div class="text-lg font-bold">${typeof value === 'number' ? value.toFixed(2) : value}</div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+
+async function addSymbol() {
+    const input = document.getElementById('new-symbol');
+    const symbol = input.value.trim().toUpperCase();
+    if (!symbol) return;
+    const btn = event.target;
+    btn.innerText = "..."; btn.disabled = true;
+    try {
+        const res = await fetch('/api/symbols', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({symbol}) });
+        if (res.ok) { input.value = ''; loadDashboard(); }
+        else { const err = await res.json(); alert(err.detail); }
+    } catch(e) { alert(e); }
+    finally { btn.innerText = "Add"; btn.disabled = false; }
+}
+
+async function removeSymbol(symbol) {
+    if (!confirm(`Remove ${symbol}?`)) return;
+    await fetch(`/api/symbols/${symbol}`, {method: 'DELETE'});
+    loadDashboard();
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000); // Refresh every 30 seconds
+</script>
+{% endblock %}

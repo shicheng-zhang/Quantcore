@@ -1,0 +1,7 @@
+set(SOURCES src/event_bus.cpp src/data_engine.cpp src/feature_engine.cpp src/risk_engine.cpp src/bindings.cpp)
+pybind11_add_module(_cpp ${SOURCES})
+target_include_directories(_cpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(_cpp PRIVATE duckdb nlohmann_json::nlohmann_json spdlog::spdlog pthread)
+find_package(OpenMP REQUIRED)
+target_link_libraries(_cpp PRIVATE OpenMP::OpenMP_CXX)
+set_target_properties(_cpp PROPERTIES OUTPUT_NAME "quantcore_cpp" LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
