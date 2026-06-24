@@ -1,5 +1,4 @@
 # ⚡ QuantCore: Institutional-Grade Quantitative Trading Stack
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-green.svg)](https://isocpp.org/)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
