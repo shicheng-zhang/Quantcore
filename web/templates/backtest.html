@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Backtest Lab - QuantCore{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4 text-green-400">Cross-Sectional Factor Backtester</h2>
+    <p class="text-gray-400 mb-6 text-sm">Simulate a Long/Short portfolio. Ranks your universe by trailing momentum, longs the top 25%, shorts the bottom 25%. Rebalances daily. Applies transaction costs.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Lookback Period (Days)</label>
+            <input type="number" id="bt-lookback" value="60" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Slippage / Costs (bps)</label>
+            <input type="number" id="bt-slippage" value="5" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white">
+        </div>
+        <div class="flex items-end">
+            <button onclick="runBacktest()" id="bt-btn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded font-bold w-full">Run Backtest</button>
+        </div>
+    </div>
+</div>
+
+<div id="results-container" class="hidden">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-green-500">
+            <h3 class="text-xs font-medium text-gray-400 uppercase">Total Return</h3>
+            <p class="text-xl font-bold" id="res-tr">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-blue-500">
+            <h3 class="text-xs font-medium text-gray-400 uppercase"><span data-term="cagr">CAGR</span></h3>
+            <p class="text-xl font-bold" id="res-cagr">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-purple-500">
+            <h3 class="text-xs font-medium text-gray-400 uppercase">Sharpe Ratio</h3>
+            <p class="text-xl font-bold" id="res-sharpe">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-red-500">
+            <h3 class="text-xs font-medium text-gray-400 uppercase">Max Drawdown</h3>
+            <p class="text-xl font-bold" id="res-dd">-</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-yellow-500">
+            <h3 class="text-xs font-medium text-gray-400 uppercase">Avg Daily <span data-term="turnover">Turnover</span></h3>
+            <p class="text-xl font-bold" id="res-turn">-</p>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Equity Curve</h2>
+        <div id="equity-chart" style="height: 400px;"></div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">Underwater Plot (Drawdown)</h2>
+        <div id="drawdown-chart" style="height: 250px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runBacktest() {
+    const btn = document.getElementById('bt-btn');
+    btn.innerText = "CRUNCHING NUMBERS..."; btn.disabled = true;
+
+    // Get current universe from dashboard API
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+
+    const payload = {
+        universe: symbols,
+        lookback: parseInt(document.getElementById('bt-lookback').value),
+        slippage_bps: parseFloat(document.getElementById('bt-slippage').value)
+    };
+
+    try {
+        const res = await fetch('/api/backtest/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+        if (!res.ok) {
+            let errMsg = "Unknown backend error";
+            try { errMsg = (await res.json()).detail; } catch(e) { errMsg = await res.text(); }
+            alert("Backtest failed: " + errMsg);
+            return;
+        }
+        const data = await res.json();
+
+        if (data.error) { alert(data.error); return; }
+
+        document.getElementById('results-container').classList.remove('hidden');
+
+        // Metrics
+        const trEl = document.getElementById('res-tr');
+        trEl.textContent = `${data.metrics.total_return}%`;
+        trEl.className = `text-xl font-bold ${data.metrics.total_return >= 0 ? 'text-green-400' : 'text-red-400'}`;
+
+        const cagrEl = document.getElementById('res-cagr');
+        cagrEl.textContent = `${data.metrics.cagr}%`;
+        cagrEl.className = `text-xl font-bold ${data.metrics.cagr >= 0 ? 'text-green-400' : 'text-red-400'}`;
+
+        document.getElementById('res-sharpe').textContent = data.metrics.sharpe;
+        document.getElementById('res-dd').textContent = `${data.metrics.max_dd}%`;
+        document.getElementById('res-turn').textContent = `${data.metrics.avg_daily_turnover}%`;
+
+        // Equity Curve Chart
+        const eqTrace = {
+            x: data.dates, y: data.equity, type: 'scatter', mode: 'lines',
+            name: 'Portfolio Equity', line: {color: '#10b981', width: 2}, fill: 'tozeroy', fillcolor: 'rgba(16, 185, 129, 0.1)'
+        };
+
+        Plotly.newPlot('equity-chart', [eqTrace], {
+            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+            xaxis: {gridcolor: '#374151', rangeslider: {visible: false}}, yaxis: {gridcolor: '#374151', title: 'Cumulative Return'},
+            margin: {t: 20, b: 40, l: 60, r: 20}, hovermode: 'x unified'
+        }, {responsive: true});
+
+        // Drawdown Chart
+        const ddTrace = {
+            x: data.dates, y: data.drawdown.map(d => d * 100), type: 'scatter', mode: 'lines',
+            name: 'Drawdown %', line: {color: '#ef4444', width: 1}, fill: 'tozeroy', fillcolor: 'rgba(239, 68, 68, 0.2)'
+        };
+
+        Plotly.newPlot('drawdown-chart', [ddTrace], {
+            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+            xaxis: {gridcolor: '#374151', rangeslider: {visible: false}}, yaxis: {gridcolor: '#374151', title: 'Drawdown %'},
+            margin: {t: 20, b: 40, l: 60, r: 20}, hovermode: 'x unified'
+        }, {responsive: true});
+
+    } catch(e) { alert("Backtest failed: " + e); }
+    finally { btn.innerText = "RUN BACKTEST"; btn.disabled = false; }
+}
+</script>
+{% endblock %}

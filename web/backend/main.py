@@ -6,6 +6,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 import asyncio
+
+import os
+# Calculate the absolute root directory of the project
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+NEXUS_BIN = os.path.join(BASE_DIR, "nexus", "build", "nexus_core")
+LOG_FILE = os.path.join(BASE_DIR, "data", "nexus_core.log")
+LIVE_JSON = os.path.join(BASE_DIR, "data", "nexus_live.json")
+STATIC_JSON = os.path.join(BASE_DIR, "data", "nexus_telemetry.json")
+
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
@@ -86,7 +95,7 @@ async def nexus_page(request: Request): return templates.TemplateResponse(reques
 
 @app.get("/api/nexus/telemetry")
 async def get_nexus_telemetry():
-    path = "data/nexus_telemetry.json"
+    path = LIVE_JSON if os.path.exists(LIVE_JSON) else STATIC_JSON
     if not os.path.exists(path):
         return {"status": "IDLE", "message": "Engine has not been run yet."}
     with open(path, "r") as f:
@@ -94,9 +103,45 @@ async def get_nexus_telemetry():
 
 @app.post("/api/nexus/start")
 async def start_nexus_engine():
-    # Run the C++ binary in the background
-    subprocess.Popen(["./nexus/build/nexus_core"], cwd=os.getcwd())
-    return {"status": "STARTED", "message": "Nexus Engine engaged."}
+    os.system(f"pkill -f '{NEXUS_BIN}' >/dev/null 2>&1")
+    with open(LOG_FILE, "w") as log_file:
+        subprocess.Popen(["stdbuf", "-oL", NEXUS_BIN], cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
+    return {"status": "STARTED", "message": "Nexus Live Engine engaged."}
+
+
+@app.get("/alpha", response_class=HTMLResponse)
+async def alpha_lab(request: Request): return templates.TemplateResponse(request, "alpha.html")
+
+@app.post("/api/alpha/scan")
+async def scan_alpha():
+    from quantcore.research.alpha_hunter import AlphaHunter
+    hunter = AlphaHunter()
+    # Run in thread to avoid blocking the ASGI server during the heavy math
+    return await asyncio.to_thread(hunter.scan)
+
+@app.get("/api/alpha/signals")
+async def get_alpha_signals():
+    path = "data/alpha_signals.json"
+    if not os.path.exists(path): return {"signals": []}
+    with open(path, "r") as f: return json.load(f)
+
+
+from pydantic import BaseModel
+from typing import List
+
+class BacktestRequest(BaseModel):
+    universe: List[str]
+    slippage_bps: float
+    lookback: int
+
+@app.get("/backtest", response_class=HTMLResponse)
+async def backtest_lab(request: Request): return templates.TemplateResponse(request, "backtest.html")
+
+@app.post("/api/backtest/run")
+async def run_backtest(req: BacktestRequest):
+    from quantcore.research.backtester import Backtester
+    bt = Backtester()
+    return await asyncio.to_thread(bt.run_cross_sectional_momentum, req.universe, req.lookback, req.slippage_bps)
 
 @app.get("/api/overview")
 async def get_overview(): return await asyncio.to_thread(analytics.get_overview)
@@ -146,3 +191,11 @@ async def remove_symbol(symbol: str):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/nexus/logs")
+async def get_nexus_logs():
+    if not os.path.exists(LOG_FILE): return {"logs": "Waiting for engine to start..."}
+    with open(LOG_FILE, "r") as f:
+        lines = f.readlines()
+        return {"logs": "".join(lines[-30:])}

@@ -32,7 +32,7 @@
         <h2 class="text-xl font-bold mb-4">Manage Universe</h2>
         <div class="flex gap-2 mb-4">
             <input type="text" id="new-symbol" placeholder="e.g. TSLA" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 flex-grow text-white">
-            <button onclick="addSymbol()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold">Add</button>
+            <button onclick="addSymbol(this)" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold">Add</button>
         </div>
         <div id="universe-list" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div>
     </div>
@@ -118,18 +118,42 @@ async function loadDashboard() {
 }
 
 
-async function addSymbol() {
+async function addSymbol(btnElement) {
     const input = document.getElementById('new-symbol');
     const symbol = input.value.trim().toUpperCase();
     if (!symbol) return;
-    const btn = event.target;
-    btn.innerText = "..."; btn.disabled = true;
+    
+    const btn = btnElement;
+    const originalText = btn.innerText;
+    btn.innerText = "..."; 
+    btn.disabled = true;
+    
     try {
-        const res = await fetch('/api/symbols', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({symbol}) });
-        if (res.ok) { input.value = ''; loadDashboard(); }
-        else { const err = await res.json(); alert(err.detail); }
-    } catch(e) { alert(e); }
-    finally { btn.innerText = "Add"; btn.disabled = false; }
+        const res = await fetch('/api/symbols', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({symbol}) 
+        });
+        
+        if (res.ok) { 
+            input.value = ''; 
+            loadDashboard(); 
+        } else { 
+            let errMsg = "Unknown error";
+            try {
+                const errJson = await res.json();
+                errMsg = errJson.detail || JSON.stringify(errJson);
+            } catch(e) {
+                errMsg = await res.text();
+            }
+            alert("Failed to add symbol: " + errMsg); 
+        }
+    } catch(e) { 
+        alert("Network error: " + e.message); 
+    } finally {
+        btn.innerText = originalText; 
+        btn.disabled = false;
+    }
 }
 
 async function removeSymbol(symbol) {

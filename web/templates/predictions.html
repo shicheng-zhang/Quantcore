@@ -137,10 +137,17 @@ async function loadPredictions() {
             { x: h.dates, y: h.sma_20, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} }
         ];
 
-        const allY = [...h.prices, ...h.sma_20].filter(v => v != null && !isNaN(v));
-        const minY = Math.min(...allY);
-        const maxY = Math.max(...allY);
-        const yPadding = (maxY - minY) * 0.05;
+        const allY = [...h.prices, ...h.sma_20].filter(v => v != null && !isNaN(v) && v > 0);
+        const sortedPrices = [...h.prices].filter(v => v > 0).sort((a, b) => a - b);
+        let minY, maxY;
+        if (sortedPrices.length > 10) {
+            minY = sortedPrices[Math.floor(sortedPrices.length * 0.02)];
+            maxY = sortedPrices[Math.floor(sortedPrices.length * 0.98)];
+        } else {
+            minY = Math.min(...allY);
+            maxY = Math.max(...allY);
+        }
+        const yPadding = (maxY - minY) * 0.10;
 
         Plotly.newPlot('context-chart', traces, {
             paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},

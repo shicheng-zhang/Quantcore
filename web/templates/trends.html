@@ -40,7 +40,7 @@
         <p class="text-3xl font-bold" id="current-trend">-</p>
     </div>
     <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Z-Score</h3>
+        <h3 class="text-sm font-medium text-gray-400"><span data-term="z_score">Z-Score</span></h3>
         <p class="text-3xl font-bold text-yellow-400" id="current-zscore">-</p>
     </div>
 </div>
@@ -129,7 +129,7 @@ async function loadTrend() {
 
     const traces = [
         { x: data.dates, y: data.prices, type: 'scatter', mode: 'lines', name: 'Price', line: {color: '#3b82f6', width: 2} },
-        { x: data.dates, y: data.sma_20, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} },
+        { x: data.dates, y: data.sma_20, type: 'scatter', mode: 'lines', name: '<span data-term="sma">SMA 20</span>', line: {color: '#10b981', width: 1, dash: 'dash'} },
         { x: data.dates, y: data.sma_50, type: 'scatter', mode: 'lines', name: 'SMA 50', line: {color: '#f59e0b', width: 1, dash: 'dash'} }
     ];
 
@@ -138,10 +138,23 @@ async function loadTrend() {
     if (buySignals.length > 0) traces.push({ x: buySignals.map(s => s.date), y: buySignals.map(s => s.price), type: 'scatter', mode: 'markers', name: 'BUY', marker: {color: '#10b981', size: 14, symbol: 'triangle-up'} });
     if (sellSignals.length > 0) traces.push({ x: sellSignals.map(s => s.date), y: sellSignals.map(s => s.price), type: 'scatter', mode: 'markers', name: 'SELL', marker: {color: '#ef4444', size: 14, symbol: 'triangle-down'} });
 
-    const allY = [...data.prices, ...data.sma_20, ...data.sma_50, ...data.signals.map(s => s.price)].filter(v => v != null && !isNaN(v));
-    const minY = Math.min(...allY);
-    const maxY = Math.max(...allY);
-    const yPadding = (maxY - minY) * 0.05;
+    // Filter out 0.0 warmup values from C++ engine and NaN garbage
+    const allY = [...data.prices, ...data.sma_20, ...data.sma_50, ...data.signals.map(s => s.price)]
+                 .filter(v => v != null && !isNaN(v) && v > 0);
+    
+    // Use 2nd and 98th percentiles to ignore flash-crash outliers and squiggles
+    const sortedPrices = [...data.prices].filter(v => v > 0).sort((a, b) => a - b);
+    let minY, maxY;
+    if (sortedPrices.length > 10) {
+        minY = sortedPrices[Math.floor(sortedPrices.length * 0.02)];
+        maxY = sortedPrices[Math.floor(sortedPrices.length * 0.98)];
+    } else {
+        minY = Math.min(...allY);
+        maxY = Math.max(...allY);
+    }
+    
+    // 10% padding so lines don't touch the top/bottom borders
+    const yPadding = (maxY - minY) * 0.10;
 
     const layout = {
         paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},

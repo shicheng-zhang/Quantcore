@@ -29,14 +29,32 @@ class AnalyticsEngine:
     def add_symbol(self, symbol: str):
         symbol = symbol.upper()
         print(f"Downloading max history for {symbol} to local cache...")
-        df = yf.download(symbol, period="max", progress=False)
-        if df.empty: raise ValueError(f"No data found for {symbol}")
-        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.droplevel(1)
+        try:
+            # Use Ticker.history() instead of download() to guarantee flat columns
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period="max")
+        except Exception as e:
+            raise ValueError(f"yfinance network error: {str(e)}")
+            
+        if df.empty: 
+            raise ValueError(f"No data found for {symbol}. Check if the ticker is valid.")
+            
         df['symbol'] = symbol
         df = df.reset_index()
-        if 'Date' not in df.columns and 'Datetime' in df.columns: df.rename(columns={'Datetime': 'Date'}, inplace=True)
+        
+        # Standardize the date column name
+        if 'Date' not in df.columns and 'Datetime' in df.columns: 
+            df.rename(columns={'Datetime': 'Date'}, inplace=True)
+        elif 'Date' not in df.columns and 'Date' in df.index.names:
+            df = df.reset_index()
+            
+        # Drop any weird multi-index artifacts just in case
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+            
         table = pa.Table.from_pandas(df)
         pq.write_table(table, f"data/raw/equities/{symbol}.parquet")
+        print(f"Saved {symbol} to local cache")
         self._load_local_cache()
 
     def remove_symbol(self, symbol: str):

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Alpha Lab - QuantCore{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-purple-400">Alpha Lab: <span data-term="lead_lag">Information Flow</span></h1>
+        <p class="text-gray-400">Hunting for Lead-Lag anomalies. Who moves first?</p>
+    </div>
+    <button onclick="runScan()" id="scan-btn" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded font-bold text-lg uppercase tracking-wider">
+        Scan Universe
+    </button>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4">The Lead-Lag Matrix</h2>
+    <p class="text-sm text-gray-400 mb-4">
+        <strong>Rows (Y):</strong> The Leader (Source). <strong>Cols (X):</strong> The Lagger (Target).<br>
+        <strong>Cell Color:</strong> Correlation Strength (Red=Negative, Blue=Positive).<br>
+        <strong>Cell Number:</strong> The Lag in Hours (e.g., "+4" means Target moves 4 hours AFTER Source).
+    </p>
+    <div id="heatmap" style="height: 600px;"></div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Top Actionable Signals</h2>
+    <div id="signals-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runScan() {
+    const btn = document.getElementById('scan-btn');
+    btn.innerText = "SCANNING (This takes ~30s)...";
+    btn.disabled = true;
+    btn.className = "bg-gray-600 px-6 py-3 rounded font-bold text-lg uppercase tracking-wider cursor-wait";
+
+    try {
+        const res = await fetch('/api/alpha/scan', {method: 'POST'});
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Backend scan failed'); }
+        loadSignals();
+    } catch(e) { alert("Scan failed: " + e); }
+    finally {
+        btn.innerText = "SCAN UNIVERSE";
+        btn.disabled = false;
+        btn.className = "bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded font-bold text-lg uppercase tracking-wider";
+    }
+}
+
+async function loadSignals() {
+    const data = await fetch('/api/alpha/signals').then(r => r.json());
+    if (!data.signals || data.signals.length === 0) return;
+
+    const universe = data.universe;
+
+    // Build Heatmap Data
+    const z_values = [];
+    const text_values = [];
+
+    // Initialize empty matrix
+    for(let i=0; i<universe.length; i++) {
+        z_values.push([]);
+        text_values.push([]);
+        for(let j=0; j<universe.length; j++) {
+            z_values[i].push(0);
+            text_values[i].push("-");
+        }
+    }
+
+    // Fill matrix
+    data.signals.forEach(sig => {
+        const i = universe.indexOf(sig.source);
+        const j = universe.indexOf(sig.target);
+        if (i !== -1 && j !== -1) {
+            z_values[i][j] = sig.correlation;
+            text_values[i][j] = `${sig.lag_hours > 0 ? '+' : ''}${sig.lag_hours}h<br>(${sig.correlation.toFixed(2)})`;
+        }
+    });
+
+    const trace = {
+        z: z_values,
+        x: universe,
+        y: universe,
+        type: 'heatmap',
+        colorscale: 'RdBu',
+        zmid: 0,
+        text: text_values,
+        texttemplate: '%{text}',
+        hoverongaps: false
+    };
+
+    Plotly.newPlot('heatmap', [trace], {
+        paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+        margin: {t: 20, b: 100, l: 100, r: 20},
+        xaxis: {title: 'Target (Lagger)', side: 'bottom'},
+        yaxis: {title: 'Source (Leader)', autorange: 'reversed'} // Reverse so top-left is 0,0
+    });
+
+    // Render Top Signals List
+    const listDiv = document.getElementById('signals-list');
+    listDiv.innerHTML = '';
+
+    // Sort by absolute strength
+    const sorted = [...data.signals].sort((a,b) => b.strength - a.strength).slice(0, 6);
+
+    sorted.forEach(sig => {
+        const color = sig.correlation > 0 ? 'text-blue-400' : 'text-red-400';
+        const relation = sig.correlation > 0 ? 'Positive' : 'Inverse';
+
+        listDiv.innerHTML += `
+            <div class="bg-gray-700 p-4 rounded border-l-4 ${sig.correlation > 0 ? 'border-blue-500' : 'border-red-500'}">
+                <div class="flex justify-between mb-2">
+                    <span class="font-bold text-lg">${sig.source} → ${sig.target}</span>
+                    <span class="text-sm ${color}">${relation}</span>
+                </div>
+                <p class="text-gray-300">
+                    <span class="font-mono text-yellow-400">${sig.source}</span> leads by
+                    <span class="font-bold text-white">${Math.abs(sig.lag_hours)} hours</span>.
+                </p>
+                <p class="text-xs text-gray-400 mt-1">Correlation: ${sig.correlation.toFixed(3)}</p>
+            </div>
+        `;
+    });
+}
+
+loadSignals();
+</script>
+{% endblock %}

@@ -4,13 +4,13 @@
 {% block content %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6">
-        <h2 class="text-xl font-bold mb-4">Hierarchical Risk Parity (HRP) Allocation</h2>
+        <h2 class="text-xl font-bold mb-4"><span data-term="hrp">Hierarchical Risk Parity (HRP)</span> Allocation</h2>
         <p class="text-gray-400 mb-4 text-sm">Institutional portfolio construction using graph theory to cluster correlated assets and allocate risk inversely to cluster variance.</p>
         <div id="hrp-chart" style="height: 400px;"></div>
     </div>
 
     <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-purple-500">
-        <h2 class="text-xl font-bold mb-4">Model Integrity (DSR)</h2>
+        <h2 class="text-xl font-bold mb-4">Model Integrity (<span data-term="dsr">DSR</span>)</h2>
         <p class="text-gray-400 text-sm mb-4">Deflated Sharpe Ratio adjusts performance for the number of trials run, detecting backtest overfitting.</p>
         <div id="dsr-metrics" class="space-y-4">
             <div class="flex justify-between"><span class="text-gray-400">Observed SR:</span><span id="obs-sr" class="font-bold">-</span></div>

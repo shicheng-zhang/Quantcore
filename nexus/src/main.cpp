@@ -9,17 +9,23 @@
 #include <algorithm>
 #include <numeric>
 #include <atomic>
-#include <random>
+#include <mutex>
+
+#include <ixwebsocket/IXNetSystem.h>
+#include <ixwebsocket/IXWebSocket.h>
+#include <nlohmann/json.hpp>
 
 using namespace nexus;
+using json = nlohmann::json;
 
-// 2 Million event buffer. Lock-free.
 SPSCQueue<Event, 2097152> event_queue;
 LimitOrderBook lob;
 
 std::atomic<bool> running{true};
 std::atomic<uint64_t> events_processed{0};
+std::atomic<double> last_price{0.0};
 std::vector<double> latencies;
+std::mutex latency_mutex;
 
 uint64_t get_nanos() {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -27,10 +33,10 @@ uint64_t get_nanos() {
 }
 
 // --- CONSUMER THREAD (The Hot Path) ---
+// THIS IS WHERE PATH B (ALPHA) WILL BE INJECTED LATER
 void engine_loop() {
-    std::cout << "[NEXUS] Engine loop started on thread " << std::this_thread::get_id() << "\n";
+    std::cout << "[NEXUS] Engine loop started. Waiting for live data...\n";
     Event event;
-    latencies.reserve(5000000);
 
     while (running.load(std::memory_order_relaxed)) {
         if (event_queue.pop(event)) {
@@ -38,20 +44,21 @@ void engine_loop() {
 
             // 1. Update LOB (O(1))
             lob.update(event);
+            last_price.store(event.price, std::memory_order_relaxed);
 
-            // 2. Evaluate Alpha (Mock: Spread Capture)
-            double spread = lob.get_spread_bps();
-            if (spread > 0.5 && spread < 2.0) {
-                // Trigger signal logic...
-            }
+            // 2. Evaluate Alpha (Placeholder for Path B)
+            // double spread = lob.get_spread_bps();
+            // if (spread > 0.5) { trigger_signal(); }
 
-            // 3. Measure Latency
+            // 3. Measure Ingest-to-Process Latency
             uint64_t latency = process_time - event.timestamp_ns;
-            latencies.push_back(static_cast<double>(latency));
+            {
+                std::lock_guard<std::mutex> lock(latency_mutex);
+                if (latencies.size() < 100000) latencies.push_back(static_cast<double>(latency));
+            }
 
             events_processed.fetch_add(1, std::memory_order_relaxed);
         } else {
-            // Spin-lock hint to reduce CPU heat/power while waiting
             #if defined(__x86_64__)
                 __builtin_ia32_pause();
             #endif
@@ -59,86 +66,107 @@ void engine_loop() {
     }
 }
 
-// --- PRODUCER THREAD (Market Data Simulator) ---
-void market_data_simulator() {
-    std::cout << "[NEXUS] Market Data Simulator started...\n";
-    std::mt19937 rng(42);
-    std::normal_distribution<double> price_dist(150.0, 0.5);
-    std::uniform_int_distribution<int> side_dist(0, 1);
+// --- PRODUCER THREAD (Live Network Ingestor) ---
+void live_data_ingestor() {
+    ix::initNetSystem();
+    ix::WebSocket webSocket;
 
-    uint64_t start_time = get_nanos();
-    uint64_t target_events = 5000000; // 5 Million events
+    // Binance Live Trade Stream
+    webSocket.setUrl("wss://stream.binance.com:9443/ws/btcusdt@trade");
 
-    for (uint64_t i = 0; i < target_events; ++i) {
-        Event ev;
-        ev.type = EventType::ORDER_BOOK_UPDATE;
-        ev.timestamp_ns = get_nanos();
-        ev.side = side_dist(rng) == 0 ? Side::BUY : Side::SELL;
-        ev.price = price_dist(rng);
-        ev.quantity = 100.0 + (rng() % 1000);
+    webSocket.setOnMessageCallback([&](const ix::WebSocketMessagePtr& msg) {
+        if (msg->type == ix::WebSocketMessageType::Message) {
+            uint64_t ingest_time = get_nanos();
 
-        // Spin until queue has space (Backpressure)
-        while (!event_queue.push(ev)) {
-            #if defined(__x86_64__)
-                __builtin_ia32_pause();
-            #endif
+            try {
+                json j = json::parse(msg->str);
+                Event ev;
+                ev.type = EventType::ORDER_BOOK_UPDATE;
+                ev.timestamp_ns = ingest_time;
+                ev.order_id = j["t"].get<uint64_t>();
+
+                // Binance sends strings for precision, we parse to double
+                ev.price = std::stod(j["p"].get<std::string>());
+                ev.quantity = std::stod(j["q"].get<std::string>());
+
+                // m = true means buyer is market maker (so this was a SELL market order)
+                ev.side = j["m"].get<bool>() ? Side::SELL : Side::BUY;
+
+                while (!event_queue.push(ev)) {
+                    #if defined(__x86_64__)
+                        __builtin_ia32_pause();
+                    #endif
+                }
+            } catch (const std::exception& e) {
+                // Drop malformed packets silently (Institutional standard)
+            }
+        } else if (msg->type == ix::WebSocketMessageType::Open) {
+            std::cout << "[NEXUS] Connected to Binance Live Feed!\n";
+        } else if (msg->type == ix::WebSocketMessageType::Error) {
+            std::cerr << "[NEXUS] WebSocket Error: " << msg->errorInfo.reason << "\n";
         }
+    });
+
+    webSocket.start();
+
+    // Keep thread alive while WebSocket runs
+    while(running.load()) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    uint64_t end_time = get_nanos();
-    double seconds = (end_time - start_time) / 1e9;
-
-    std::cout << "[NEXUS] Simulation complete. Injected " << target_events
-              << " events in " << seconds << "s\n";
-
-    // Wait for consumer to drain
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    running.store(false);
+    webSocket.stop();
+    ix::uninitNetSystem();
 }
 
 // --- TELEMETRY WRITER ---
-void write_telemetry() {
-    if (latencies.empty()) return;
+void telemetry_loop() {
+    while(running.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    std::sort(latencies.begin(), latencies.end());
-    double sum = std::accumulate(latencies.begin(), latencies.end(), 0.0);
-    double mean = sum / latencies.size();
-    double p99 = latencies[static_cast<size_t>(latencies.size() * 0.99)];
-    double max_lat = latencies.back();
+        std::vector<double> current_latencies;
+        {
+            std::lock_guard<std::mutex> lock(latency_mutex);
+            current_latencies = latencies;
+        }
 
-    uint64_t total = events_processed.load();
-    double eps = total / 5.0; // Roughly 5 seconds of runtime
+        double mean = 0, p99 = 0, max_lat = 0;
+        if (!current_latencies.empty()) {
+            std::sort(current_latencies.begin(), current_latencies.end());
+            mean = std::accumulate(current_latencies.begin(), current_latencies.end(), 0.0) / current_latencies.size();
+            p99 = current_latencies[static_cast<size_t>(current_latencies.size() * 0.99)];
+            max_lat = current_latencies.back();
+        }
 
-    std::ofstream out("data/nexus_telemetry.json");
-    out << "{\n";
-    out << "  \"status\": \"NOMINAL\",\n";
-    out << "  \"architecture\": \"C++20 Lock-Free SPSC\",\n";
-    out << "  \"events_processed\": " << total << ",\n";
-    out << "  \"events_per_sec\": " << static_cast<uint64_t>(eps) << ",\n";
-    out << "  \"latency_ns_mean\": " << mean << ",\n";
-    out << "  \"latency_ns_p99\": " << p99 << ",\n";
-    out << "  \"latency_ns_max\": " << max_lat << ",\n";
-    out << "  \"best_bid\": " << lob.get_best_bid() << ",\n";
-    out << "  \"best_ask\": " << lob.get_best_ask() << ",\n";
-    out << "  \"spread_bps\": " << lob.get_spread_bps() << "\n";
-    out << "}\n";
-    out.close();
+        uint64_t total = events_processed.load();
 
-    std::cout << "[NEXUS] Telemetry written. p99 Latency: " << p99 << " ns\n";
+        std::ofstream out("data/nexus_live.json");
+        out << "{\n";
+        out << "  \"status\": \"LIVE\",\n";
+        out << "  \"symbol\": \"BTCUSDT\",\n";
+        out << "  \"events_processed\": " << total << ",\n";
+        out << "  \"last_price\": " << last_price.load() << ",\n";
+        out << "  \"latency_ns_mean\": " << mean << ",\n";
+        out << "  \"latency_ns_p99\": " << p99 << ",\n";
+        out << "  \"latency_ns_max\": " << max_lat << ",\n";
+        out << "  \"best_bid\": " << lob.get_best_bid() << ",\n";
+        out << "  \"best_ask\": " << lob.get_best_ask() << ",\n";
+        out << "  \"spread_bps\": " << lob.get_spread_bps() << "\n";
+        out << "}\n";
+        out.close();
+    }
 }
 
 int main() {
-    std::cout << "=== NEXUS INSTITUTIONAL TRADING ENGINE ===\n";
-    std::cout << "Initializing Lock-Free Memory Structures...\n";
+    std::cout << "=== NEXUS LIVE TRADING ENGINE ===\n";
 
     std::thread consumer(engine_loop);
-    std::thread producer(market_data_simulator);
+    std::thread producer(live_data_ingestor);
+    std::thread telemetry(telemetry_loop);
 
+    // Run until killed by the OS or FastAPI
     producer.join();
     consumer.join();
+    telemetry.join();
 
-    write_telemetry();
-
-    std::cout << "=== ENGINE SHUTDOWN COMPLETE ===\n";
     return 0;
 }

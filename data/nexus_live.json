@@ -1,0 +1,12 @@
+{
+  "status": "LIVE",
+  "symbol": "BTCUSDT",
+  "events_processed": 45466,
+  "last_price": 59644,
+  "latency_ns_mean": 5386.25,
+  "latency_ns_p99": 66420,
+  "latency_ns_max": 1.08121e+06,
+  "best_bid": 59651.8,
+  "best_ask": 59418,
+  "spread_bps": -39.1941
+}
