@@ -350,7 +350,7 @@ Built-in risk controls (configurable in `system.yaml`):
 - **Huge Pages:** Enable for reduced TLB misses (`echo always > /sys/kernel/mm/transparent_hugepage/enabled`)
 ---
 ## 📄 License
-MIT License — See [LICENSE](LICENSE) for details.
+GPLv3 License — See [LICENSE](LICENSE) for details.
 ---
 ## 🤝 Contributing
 1. Fork the repository
