@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Institutional Ops - QuantCore{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-red-500">Institutional Operations & Surveillance</h1>
+        <p class="text-gray-400">Phase 1 (Kill Switch), Phase 4 (SOR/Dark Pools), Phase 5 (Regulatory Compliance).</p>
+    </div>
+    <div class="flex gap-4">
+        <button onclick="startSurveillance()" id="surv-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold uppercase text-sm">Start Surveillance</button>
+        <button onclick="resetSystem()" id="reset-btn" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded font-bold uppercase text-sm">Reset System</button>
+        <button onclick="triggerKill()" id="kill-btn" class="bg-red-800 hover:bg-red-900 border-2 border-red-500 px-6 py-3 rounded font-bold uppercase tracking-wider animate-pulse">
+            ☢️ KILL SWITCH
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-green-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">System Status</h3>
+        <p class="text-2xl font-bold" id="sys-status">NOMINAL</p>
+        <p class="text-xs text-gray-500 mt-1" id="halt-reason">All systems operational.</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-blue-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Lit Venue Fills</h3>
+        <p class="text-2xl font-bold text-blue-400" id="lit-fills">0</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-purple-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Dark Pool Fills</h3>
+        <p class="text-2xl font-bold text-purple-400" id="dark-fills">0</p>
+        <p class="text-xs text-gray-500 mt-1">Price Improvement: <span id="dark-imp" class="text-green-400">0.0 bps</span></p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
+        <h2 class="text-xl font-bold mb-4 text-blue-400">Smart Order Routing (SOR)</h2>
+        <div id="sor-chart" style="height: 300px;"></div>
+        <p class="text-xs text-gray-400 mt-2">Orders are fragmented: 70% to Lit Exchanges (Level 4 Sim), 30% to Dark Pools (Hidden Liquidity).</p>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6 border border-yellow-500/30">
+        <h2 class="text-xl font-bold mb-4 text-yellow-400">Regulatory Surveillance Monitor</h2>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center p-3 bg-gray-900 rounded">
+                <span class="text-gray-300">Spoofing / Layering Detection</span>
+                <span id="spoof-status" class="px-2 py-1 rounded text-xs font-bold bg-green-900 text-green-400">CLEAR</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-900 rounded">
+                <span class="text-gray-300">Wash Trading Monitor</span>
+                <span class="px-2 py-1 rounded text-xs font-bold bg-green-900 text-green-400">CLEAR</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-900 rounded">
+                <span class="text-gray-300">Order-to-Trade Ratio</span>
+                <span id="otr-status" class="px-2 py-1 rounded text-xs font-bold bg-green-900 text-green-400">NORMAL</span>
+            </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-4">Simulates FINRA/SEC OATS/CAT surveillance. Auto-triggers Kill Switch if abuse is detected.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function triggerKill() {
+    if (!confirm("TRIGGER MANUAL KILL SWITCH? This will halt all C++ execution immediately.")) return;
+    await fetch('/api/ops/kill_switch', {method: 'POST'});
+}
+
+async function resetSystem() {
+    await fetch('/api/ops/reset', {method: 'POST'});
+}
+
+async function startSurveillance() {
+    await fetch('/api/ops/start_surveillance', {method: 'POST'});
+    document.getElementById('surv-btn').innerText = "SURVEILLANCE ACTIVE";
+    document.getElementById('surv-btn').className = "bg-green-700 px-4 py-2 rounded font-bold uppercase text-sm";
+}
+
+async function loadOps() {
+    try {
+        const data = await fetch('/api/nexus/telemetry').then(r => r.json());
+
+        const statusEl = document.getElementById('sys-status');
+        const reasonEl = document.getElementById('halt-reason');
+
+        if (data.kill_switch || data.reg_halt) {
+            statusEl.innerText = "HALTED";
+            statusEl.className = "text-2xl font-bold text-red-500";
+            reasonEl.innerText = data.halt_reason || "MANUAL KILL SWITCH";
+            document.getElementById('spoof-status').innerText = "TRIGGERED";
+            document.getElementById('spoof-status').className = "px-2 py-1 rounded text-xs font-bold bg-red-900 text-red-400 animate-pulse";
+        } else {
+            statusEl.innerText = "NOMINAL";
+            statusEl.className = "text-2xl font-bold text-green-400";
+            reasonEl.innerText = "All systems operational.";
+            document.getElementById('spoof-status').innerText = "CLEAR";
+            document.getElementById('spoof-status').className = "px-2 py-1 rounded text-xs font-bold bg-green-900 text-green-400";
+        }
+
+        document.getElementById('lit-fills').innerText = (data.lit_fills || 0).toLocaleString();
+        document.getElementById('dark-fills').innerText = (data.dark_fills || 0).toLocaleString();
+        document.getElementById('dark-imp').innerText = `${(data.dark_improvement || 0).toFixed(2)} bps`;
+
+        // SOR Pie Chart
+        const lit = data.lit_fills || 0;
+        const dark = data.dark_fills || 0;
+        if (lit + dark > 0) {
+            Plotly.newPlot('sor-chart', [{
+                values: [lit, dark],
+                labels: ['Lit Exchanges', 'Dark Pools'],
+                type: 'pie',
+                marker: {colors: ['#3b82f6', '#8b5cf6']},
+                textinfo: 'label+percent'
+            }], {
+                paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+                margin: {t: 20, b: 20, l: 20, r: 20}, showlegend: false
+            }, {responsive: true});
+        }
+    } catch(e) {}
+}
+
+setInterval(loadOps, 1000);
+loadOps();
+</script>
+{% endblock %}

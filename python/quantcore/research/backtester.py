@@ -1,6 +1,24 @@
+import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 """Institutional Vectorized Backtester."""
 import polars as pl
 import numpy as np
+
+import math
+
+def _sanitize(obj):
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_sanitize(x) for x in obj]
+    elif isinstance(obj, (float, np.floating)):
+        if math.isnan(obj) or math.isinf(obj):
+            return 0.0
+        return float(obj)
+    elif isinstance(obj, (int, np.integer)):
+        return int(obj)
+    return obj
+
 import yfinance as yf
 import os
 import json
@@ -125,7 +143,7 @@ class Backtester:
         # Format for UI
         dates_str = [d.strftime('%Y-%m-%d') if hasattr(d, 'strftime') else str(d)[:10] for d in dates]
 
-        return {
+        return _sanitize({
             "dates": dates_str,
             "equity": equity.tolist(),
             "drawdown": drawdown.tolist(),
@@ -137,4 +155,4 @@ class Backtester:
                 "avg_daily_turnover": round(np.mean(turnover[lookback:]) * 100, 2)
             },
             "universe": valid_symbols
-        }
+        })

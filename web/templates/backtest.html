@@ -76,7 +76,10 @@ async function runBacktest() {
         const res = await fetch('/api/backtest/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
         if (!res.ok) {
             let errMsg = "Unknown backend error";
-            try { errMsg = (await res.json()).detail; } catch(e) { errMsg = await res.text(); }
+            try { 
+                const text = await res.text();
+                try { errMsg = JSON.parse(text).detail; } catch(e2) { errMsg = text.substring(0, 100); }
+            } catch(e) { errMsg = e.message; }
             alert("Backtest failed: " + errMsg);
             return;
         }

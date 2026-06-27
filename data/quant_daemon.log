@@ -1,0 +1,12 @@
+[QUANT DAEMON] Initialized. Bridge size: 548 bytes
+[QUANT] Fetching market data & calculating risk...
+[QUANT] Error: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+[QUANT] Fetching market data & calculating risk...
+[QUANT] Error: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+Traceback (most recent call last):
+  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/hivemind/quant_daemon.py", line 99, in <module>
+    run_daemon()
+  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/hivemind/quant_daemon.py", line 96, in run_daemon
+    time.sleep(15) # Rebalance every 15 seconds
+    ^^^^^^^^^^^^^^
+KeyboardInterrupt

@@ -5,6 +5,11 @@ from datetime import datetime, timedelta
 import numpy as np
 import os
 import yfinance as yf
+
+import logging
+yf_logger = logging.getLogger('yfinance')
+yf_logger.setLevel(logging.CRITICAL)
+
 import pyarrow.parquet as pq
 import pyarrow as pa
 import pandas as pd
@@ -15,6 +20,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
 import quantcore.quantcore_cpp as core
 
 class AnalyticsEngine:
+    @staticmethod
+    def _sanitize_for_json(obj):
+        """Recursively replaces NaN/Inf with None to prevent JSON serialization crashes."""
+        import math
+        if isinstance(obj, dict):
+            return {k: AnalyticsEngine._sanitize_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [AnalyticsEngine._sanitize_for_json(x) for x in obj]
+        elif isinstance(obj, (float, int)):
+            try:
+                if math.isnan(obj) or math.isinf(obj):
+                    return None
+            except TypeError:
+                pass
+            return obj
+        return obj
+
     def __init__(self):
         self.data_engine = core.DataEngine("data/analytics.db")
         self.feature_engine = core.FeatureEngine()
@@ -95,7 +117,10 @@ class AnalyticsEngine:
         for symbol in symbols[:6]:
             try:
                 df = self.fetch_live_data(symbol, "5d", "1d")
-                latest_prices[symbol] = float(df['Close'].iloc[-1])
+                valid_prices = df['Close'].dropna()
+                if not valid_prices.empty:
+                    price = float(valid_prices.iloc[-1])
+                    if price > 0: latest_prices[symbol] = price
             except: pass
         return {"total_symbols": len(symbols), "latest_prices": latest_prices, "system_status": "Active", "last_update": datetime.now().isoformat()}
 
@@ -126,17 +151,23 @@ class AnalyticsEngine:
                 sma_50 = self.feature_engine.rolling_mean(math_prices, 50)
                 zscore = self.feature_engine.rolling_zscore(math_prices, 50)
 
-                offset = len(math_prices) - len(prices)
+                offset = max(0, len(math_prices) - len(prices))
                 sma_20 = sma_20[offset:]
                 sma_50 = sma_50[offset:]
                 zscore = zscore[offset:]
+                
+                # Safety padding: if math data was somehow shorter than UI data, pad with 0.0
+                while len(zscore) < len(prices):
+                    zscore.append(0.0)
+                    sma_20.append(0.0)
+                    sma_50.append(0.0)
             else:
                 sma_20 = self.feature_engine.rolling_mean(prices, 20)
                 sma_50 = self.feature_engine.rolling_mean(prices, 50)
                 zscore = self.feature_engine.rolling_zscore(prices, 50)
 
             signals = []
-            for i in range(len(prices)):
+            for i in range(min(len(prices), len(zscore))):
                 if zscore[i] == 0.0 and i < 50: continue
                 if zscore[i] > 2.0: signals.append({"date": dates[i], "type": "SELL", "price": prices[i]})
                 elif zscore[i] < -2.0: signals.append({"date": dates[i], "type": "BUY", "price": prices[i]})
@@ -145,7 +176,7 @@ class AnalyticsEngine:
             current_sma20 = sma_20[-1] if sma_20 else 0
             trend = "BULLISH" if current_price > current_sma20 else "BEARISH"
 
-            return {"symbol": symbol, "dates": dates, "prices": prices, "volumes": volumes, "sma_20": sma_20, "sma_50": sma_50, "zscore": zscore, "signals": signals[-10:], "current_trend": trend, "current_price": current_price, "price_change": ((prices[-1] - prices[-2]) / prices[-2] * 100) if len(prices) > 1 else 0}
+            return self._sanitize_for_json({"symbol": symbol, "dates": dates, "prices": prices, "volumes": volumes, "sma_20": sma_20, "sma_50": sma_50, "zscore": zscore, "signals": signals[-10:], "current_trend": trend, "current_price": current_price, "price_change": ((prices[-1] - prices[-2]) / prices[-2] * 100) if len(prices) > 1 else 0})
         except Exception as e:
             traceback.print_exc()
             return {"error": str(e)}

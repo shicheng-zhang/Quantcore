@@ -143,6 +143,68 @@ async function loadLogs() {
 setInterval(loadLogs, 1000);
 loadLogs();
 
+async function triggerGhost() {
+    const btn = document.getElementById('ghost-btn');
+    btn.innerText = "EXECUTING..."; btn.disabled = true;
+
+    const payload = {
+        shares: parseInt(document.getElementById('ghost-shares').value),
+        volatility: parseFloat(document.getElementById('ghost-vol').value)
+    };
+
+    await fetch('/api/nexus/ghost_execute', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+
+    setTimeout(() => { btn.innerText = "STRESS TEST EXECUTION"; btn.disabled = false; }, 2000);
+}
+
+async function loadGhostStatus() {
+    try {
+        const data = await fetch('/api/nexus/ghost_status').then(r => r.json());
+        if (data.active || data.target > 0) {
+            document.getElementById('g-target').innerText = data.target.toLocaleString();
+            document.getElementById('g-filled').innerText = data.filled.toLocaleString();
+            document.getElementById('g-queue').innerText = data.queue.toLocaleString();
+            document.getElementById('g-partials').innerText = data.partials;
+            document.getElementById('g-slip').innerText = `$${data.slippage_usd.toFixed(2)}`;
+            document.getElementById('g-theo').innerText = `$${data.theo.toFixed(2)}`;
+            document.getElementById('g-actual').innerText = `$${data.actual.toFixed(2)}`;
+        }
+    } catch(e) {}
+}
+setInterval(loadGhostStatus, 100);
+
+
+async function triggerGhost() {
+    const btn = document.getElementById('ghost-btn');
+    btn.innerText = "EXECUTING..."; btn.disabled = true;
+
+    const payload = {
+        shares: parseInt(document.getElementById('ghost-shares').value),
+        volatility: parseFloat(document.getElementById('ghost-vol').value)
+    };
+
+    await fetch('/api/nexus/ghost_execute', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+
+    setTimeout(() => { btn.innerText = "STRESS TEST EXECUTION"; btn.disabled = false; }, 2000);
+}
+
+async function loadGhostStatus() {
+    try {
+        const data = await fetch('/api/nexus/ghost_status').then(r => r.json());
+        if (data.active || data.target > 0) {
+            document.getElementById('g-target').innerText = data.target.toLocaleString();
+            document.getElementById('g-filled').innerText = data.filled.toLocaleString();
+            document.getElementById('g-queue').innerText = data.queue.toLocaleString();
+            document.getElementById('g-partials').innerText = data.partials;
+            document.getElementById('g-slip').innerText = `$${data.slippage_usd.toFixed(2)}`;
+            document.getElementById('g-theo').innerText = `$${data.theo.toFixed(2)}`;
+            document.getElementById('g-actual').innerText = `$${data.actual.toFixed(2)}`;
+        }
+    } catch(e) {}
+}
+setInterval(loadGhostStatus, 100);
+
+
 </script>
 
 <div class="bg-gray-800 rounded-lg p-6 mt-6 border border-yellow-500/30">

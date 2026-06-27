@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Hive-Mind IPC - QuantCore{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-cyan-400">The Hive-Mind IPC Bridge</h1>
+        <p class="text-gray-400">Zero-Copy Shared Memory (<code>mmap</code>) between Python Quant & C++ Trader.</p>
+    </div>
+    <button onclick="startDaemon()" id="daemon-btn" class="bg-cyan-600 hover:bg-cyan-700 px-6 py-3 rounded font-bold uppercase tracking-wider">
+        Activate Quant Daemon
+    </button>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6 border border-cyan-500/30">
+        <h2 class="text-xl font-bold mb-4 text-cyan-400">Live Portfolio Weights (Python -> C++)</h2>
+        <div id="weights-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <p class="text-gray-500 col-span-4 text-center py-8">Waiting for Python Quant Daemon...</p>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6 border border-purple-500/30">
+        <h2 class="text-xl font-bold mb-4 text-purple-400">C++ Reality Feedback</h2>
+        <div class="space-y-4">
+            <div class="flex justify-between"><span class="text-gray-400">Slippage Bleed:</span><span class="font-bold text-red-400" id="fb-slip">$0.00</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Realized PnL:</span><span class="font-bold" id="fb-pnl">$0.00</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Orders Executed:</span><span class="font-bold text-white" id="fb-orders">0</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Market Regime Vol:</span><span class="font-bold text-yellow-400" id="fb-vol">0.0%</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 border border-yellow-500/30">
+    <h2 class="text-xl font-bold mb-4 text-yellow-400">Quant Daemon Console</h2>
+    <pre id="daemon-logs" class="bg-black text-green-400 p-4 rounded font-mono text-xs h-48 overflow-y-auto whitespace-pre-wrap">Waiting for daemon...</pre>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function startDaemon() {
+    const btn = document.getElementById('daemon-btn');
+    btn.innerText = "ACTIVATING..."; btn.disabled = true;
+    await fetch('/api/hivemind/start_daemon', {method: 'POST'});
+    setTimeout(() => { btn.innerText = "DAEMON RUNNING"; btn.className = "bg-green-700 px-6 py-3 rounded font-bold uppercase tracking-wider"; }, 2000);
+}
+
+async function loadStatus() {
+    try {
+        const data = await fetch('/api/hivemind/status').then(r => r.json());
+        if (data.active === false) return;
+
+        const container = document.getElementById('weights-container');
+        container.innerHTML = '';
+        data.assets.forEach((sym, i) => {
+            const w = data.weights[i];
+            const pct = (w * 100).toFixed(1);
+            container.innerHTML += `
+                <div class="bg-gray-900 p-4 rounded border border-gray-700 text-center">
+                    <p class="text-xs text-gray-400 uppercase">${sym}</p>
+                    <p class="text-2xl font-bold text-cyan-400">${pct}%</p>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
+                        <div class="bg-cyan-500 h-2 rounded-full" style="width: ${pct}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('fb-slip').innerText = `$${data.cpp_slippage.toFixed(2)}`;
+        const pnlEl = document.getElementById('fb-pnl');
+        pnlEl.innerText = `$${data.cpp_pnl.toFixed(2)}`;
+        pnlEl.className = `font-bold ${data.cpp_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
+        document.getElementById('fb-orders').innerText = data.cpp_orders;
+        document.getElementById('fb-vol').innerText = `${(data.regime_vol * 100).toFixed(2)}%`;
+    } catch(e) {}
+}
+
+async function loadLogs() {
+    try {
+        const data = await fetch('/api/hivemind/logs').then(r => r.json());
+        const logsEl = document.getElementById('daemon-logs');
+        if (logsEl && data.logs) {
+            logsEl.innerText = data.logs;
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+    } catch(e) {}
+}
+
+setInterval(loadStatus, 1000);
+setInterval(loadLogs, 1000);
+loadStatus();
+loadLogs();
+</script>
+{% endblock %}
