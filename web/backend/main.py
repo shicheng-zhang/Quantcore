@@ -226,6 +226,9 @@ async def ghost_status():
     }
 
 
+@app.get("/statarb", response_class=HTMLResponse)
+async def statarb_page(request: Request): return templates.TemplateResponse(request, "statarb.html")
+
 @app.get("/hivemind", response_class=HTMLResponse)
 async def hivemind_page(request: Request): return templates.TemplateResponse(request, "hivemind.html")
 
@@ -234,7 +237,7 @@ async def start_daemon():
     os.system("pkill -f quant_daemon.py >/dev/null 2>&1")
     log_path = os.path.join(BASE_DIR, "data", "quant_daemon.log")
     with open(log_path, "w") as log_file:
-        subprocess.Popen([sys.executable, "python/quantcore/hivemind/quant_daemon.py"],
+        subprocess.Popen([sys.executable, "-u", "python/quantcore/hivemind/quant_daemon.py"],
                          cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
     return {"status": "STARTED"}
 
@@ -291,7 +294,7 @@ async def start_surveillance():
     os.system("pkill -f surveillance_daemon.py >/dev/null 2>&1")
     log_path = os.path.join(BASE_DIR, "data", "surveillance.log")
     with open(log_path, "w") as log_file:
-        subprocess.Popen([sys.executable, "python/quantcore/ops/surveillance_daemon.py"],
+        subprocess.Popen([sys.executable, "-u", "python/quantcore/ops/surveillance_daemon.py"],
                          cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
     return {"status": "STARTED"}
 

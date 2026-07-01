@@ -1,12 +1,10 @@
-[QUANT DAEMON] Initialized. Bridge size: 548 bytes
-[QUANT] Fetching market data & calculating risk...
-[QUANT] Error: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
-[QUANT] Fetching market data & calculating risk...
-[QUANT] Error: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+[DAEMON] Starting Unified Hive-Mind & StatArb Daemon...
+[DAEMON] Bridge mapped. Entering continuous loop...
+[CRUCIBLE] Scanning universe...
+[DAEMON] Best pair: BTC-USD/ETH-USD | Z: -0.63
 Traceback (most recent call last):
-  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/hivemind/quant_daemon.py", line 99, in <module>
+  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/hivemind/quant_daemon.py", line 163, in <module>
     run_daemon()
-  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/hivemind/quant_daemon.py", line 96, in run_daemon
-    time.sleep(15) # Rebalance every 15 seconds
-    ^^^^^^^^^^^^^^
+  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/hivemind/quant_daemon.py", line 160, in run_daemon
+    time.sleep(10)
 KeyboardInterrupt

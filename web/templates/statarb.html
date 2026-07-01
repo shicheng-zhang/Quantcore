@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}StatArb Crucible - QuantCore{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-emerald-400">The Alpha Crucible: StatArb</h1>
+        <p class="text-gray-400">Cointegration, Ornstein-Uhlenbeck Half-Life, and Purged Cross-Validation.</p>
+    </div>
+    <button onclick="startDaemon()" id="daemon-btn" class="bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded font-bold uppercase tracking-wider">
+        Activate Crucible
+    </button>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6 border border-emerald-500/30">
+        <h2 class="text-xl font-bold mb-4 text-emerald-400">Active Market-Neutral Pair</h2>
+        <div id="active-pair" class="text-center py-8 text-gray-500">Waiting for Crucible to scan universe...</div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6 border border-purple-500/30">
+        <h2 class="text-xl font-bold mb-4 text-purple-400">C++ Execution Reality</h2>
+        <div class="space-y-4">
+            <div class="flex justify-between"><span class="text-gray-400">Pair PnL (Sim):</span><span class="font-bold" id="fb-pnl">$0.00</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Legs Executed:</span><span class="font-bold text-white" id="fb-orders">0</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Slippage Bleed:</span><span class="font-bold text-red-400" id="fb-slip">$0.00</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Purged Cross-Validation Matrix (Top 5 Pairs)</h2>
+    <table class="w-full text-left text-sm">
+        <thead class="text-xs text-gray-400 uppercase bg-gray-700">
+            <tr>
+                <th class="p-3">Pair</th>
+                <th class="p-3">Cointegration P-Value</th>
+                <th class="p-3">Hedge Ratio (Beta)</th>
+                <th class="p-3">Half-Life (Days)</th>
+                <th class="p-3">Purged CV Sharpe</th>
+                <th class="p-3">Current Z-Score</th>
+            </tr>
+        </thead>
+        <tbody id="cv-matrix" class="divide-y divide-gray-700">
+            <tr><td colspan="6" class="p-4 text-center text-gray-500">Run the Crucible to see results...</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function startDaemon() {
+    const btn = document.getElementById('daemon-btn');
+    btn.innerText = "SCANNING..."; btn.disabled = true;
+    await fetch('/api/hivemind/start_daemon', {method: 'POST'});
+    setTimeout(() => { btn.innerText = "CRUCIBLE ACTIVE"; btn.className = "bg-green-700 px-6 py-3 rounded font-bold uppercase tracking-wider"; }, 2000);
+}
+
+async function loadData() {
+    try {
+        const data = await fetch('/api/hivemind/status').then(r => r.json());
+        if (data.active === false) return;
+
+        document.getElementById('fb-pnl').innerText = `$${(data.cpp_pnl || 0).toFixed(2)}`;
+        document.getElementById('fb-orders').innerText = data.cpp_orders || 0;
+        document.getElementById('fb-slip').innerText = `$${(data.cpp_slippage || 0).toFixed(2)}`;
+
+        // Load StatArb specific JSON
+        const arbData = await fetch('/static/data/stat_arb_ui.json').then(r => r.json()).catch(() => null);
+        if (arbData && arbData.active_pair) {
+            const p = arbData.active_pair;
+            const sigColor = p.signal > 0 ? 'text-green-400' : (p.signal < 0 ? 'text-red-400' : 'text-gray-400');
+            const sigText = p.signal > 0 ? 'LONG SPREAD' : (p.signal < 0 ? 'SHORT SPREAD' : 'FLAT');
+
+            document.getElementById('active-pair').innerHTML = `
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase">Pair</p>
+                        <p class="text-2xl font-bold text-white">${p.pair}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase">Signal</p>
+                        <p class="text-2xl font-bold ${sigColor}">${sigText}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase">Spread Z-Score</p>
+                        <p class="text-2xl font-bold text-yellow-400">${p.current_z.toFixed(2)}</p>
+                    </div>
+                </div>
+            `;
+
+            const matrix = document.getElementById('cv-matrix');
+            matrix.innerHTML = '';
+            arbData.top_pairs.forEach(tp => {
+                const zColor = Math.abs(tp.current_z) > 2 ? 'text-yellow-400 font-bold' : 'text-gray-300';
+                matrix.innerHTML += `
+                    <tr class="hover:bg-gray-700">
+                        <td class="p-3 font-bold">${tp.pair}</td>
+                        <td class="p-3 ${tp.pvalue < 0.05 ? 'text-green-400' : 'text-red-400'}">${tp.pvalue.toFixed(4)}</td>
+                        <td class="p-3">${tp.beta.toFixed(3)}</td>
+                        <td class="p-3">${tp.half_life.toFixed(1)}</td>
+                        <td class="p-3 ${tp.cv_sharpe > 1.0 ? 'text-green-400' : 'text-gray-300'}">${tp.cv_sharpe.toFixed(2)}</td>
+                        <td class="p-3 ${zColor}">${tp.current_z.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+    } catch(e) {}
+}
+
+setInterval(loadData, 2000);
+loadData();
+</script>
+{% endblock %}

@@ -94,6 +94,38 @@ void engine_loop() {
                     double vol = hive_bridge->regime_vol;
                     if (vol == 0.0) vol = 0.05; // Fallback
 
+                    // --- MODULE 1: STATARB PAIR EXECUTION ---
+                    int8_t arb_sig = *(volatile int8_t*)&hive_bridge->statarb_signal;
+                    if (arb_sig != 0) {
+                        double beta = *(volatile double*)&hive_bridge->statarb_hedge_ratio;
+                        double z = *(volatile double*)&hive_bridge->statarb_spread_z;
+
+                        // Simulate Pair Trade: Long S1, Short S2 (or vice versa)
+                        double price_s1 = 100.0 + (rand() % 500) / 100.0; // Synthetic price
+                        double price_s2 = 100.0 + (rand() % 500) / 100.0;
+
+                        uint64_t qty_s1 = 1000;
+                        uint64_t qty_s2 = static_cast<uint64_t>(qty_s1 * beta);
+
+                        // Execute Leg 1
+                        double fill1 = micro_sim.simulate_fill(1, price_s1, qty_s1,
+                            arb_sig > 0 ? Side::BUY : Side::SELL, price_s1, vol);
+
+                        // Execute Leg 2 (Hedged)
+                        double fill2 = micro_sim.simulate_fill(2, price_s2, qty_s2,
+                            arb_sig > 0 ? Side::SELL : Side::BUY, price_s2, vol);
+
+                        // PnL is the convergence of the spread minus slippage
+                        double spread_pnl = (fill1 - fill2) * (arb_sig > 0 ? 1 : -1);
+
+                        *(volatile double*)&hive_bridge->realized_pnl += spread_pnl;
+                        *(volatile uint32_t*)&hive_bridge->orders_sent += 2;
+                        *(volatile uint32_t*)&hive_bridge->orders_filled += 2;
+
+                        // Audit the pair trade
+                        audit_log.append_event(get_nanos(), "STATARB_PAIR_EXEC", z, spread_pnl);
+                    }
+
                     for (uint32_t i = 0; i < n && i < 20; ++i) {
                         double target_w = hive_bridge->target_weights[i];
                         double delta_w = target_w - current_weights[i];

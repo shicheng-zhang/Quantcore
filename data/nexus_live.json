@@ -1,14 +1,14 @@
 {
   "status": "LIVE",
   "symbol": "BTCUSDT",
-  "events_processed": 5500140,
+  "events_processed": 30241197,
   "last_price": 40000,
-  "latency_ns_mean": 6395.23,
-  "latency_ns_p99": 241423,
-  "latency_ns_max": 370270,
-  "best_bid": 60594.1,
+  "latency_ns_mean": 5393.94,
+  "latency_ns_p99": 157214,
+  "latency_ns_max": 297285,
+  "best_bid": 58612,
   "best_ask": 40000,
-  "spread_bps": -3398.7,
+  "spread_bps": -3175.47,
   "ghost_active": false,
   "ghost_target": 0,
   "ghost_filled": 0,
@@ -22,7 +22,7 @@
   "adverse_sel_rate": 0,
   "avg_temp_impact": 0,
   "avg_perm_impact": 0,
-  "latency_jitter_ns": 120.42,
-  "audit_chain_len": 9024,
-  "audit_last_hash": "418eae1d436fb7dd"
+  "latency_jitter_ns": 228.198,
+  "audit_chain_len": 49629,
+  "audit_last_hash": "882e2441fcf32397"
 }
