@@ -67,7 +67,7 @@ async function loadData() {
         document.getElementById('fb-slip').innerText = `$${(data.cpp_slippage || 0).toFixed(2)}`;
 
         // Load StatArb specific JSON
-        const arbData = await fetch('/static/data/stat_arb_ui.json').then(r => r.json()).catch(() => null);
+        const arbData = await fetch('/api/statarb/status').then(r => r.json()).catch(() => null);
         if (arbData && arbData.active_pair) {
             const p = arbData.active_pair;
             const sigColor = p.signal > 0 ? 'text-green-400' : (p.signal < 0 ? 'text-red-400' : 'text-gray-400');

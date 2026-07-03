@@ -1,8 +1,2 @@
 [SURVEILLANCE] FINRA/SEC Market Abuse Monitor Online.
 [SURVEILLANCE] Monitoring for Spoofing, Layering, and Wash Trading...
-Traceback (most recent call last):
-  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/ops/surveillance_daemon.py", line 35, in <module>
-    run_surveillance()
-  File "/home/magi-00-wsl/workstation/home/work/quantcore/python/quantcore/ops/surveillance_daemon.py", line 32, in run_surveillance
-    time.sleep(2)
-KeyboardInterrupt

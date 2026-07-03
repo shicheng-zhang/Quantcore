@@ -6,7 +6,6 @@ echo " QuantCore Web Dashboard"
 echo " http://127.0.0.1:8765"
 echo "=========================================="
 
-source .venv/bin/activate
 cd "$(dirname "$0")"
 
 # Run FastAPI with uvicorn

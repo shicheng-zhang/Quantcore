@@ -31,10 +31,23 @@ class Backtester:
     def _normalize_date(self, df):
         """Safely strips timezone info to prevent Polars join collisions."""
         dtype = df.schema["Date"]
-        if hasattr(dtype, "time_zone") and dtype.time_zone is not None:
-            return df.with_columns(pl.col("Date").dt.convert_time_zone("UTC").dt.replace_time_zone(None))
-        return df
 
+        # 1. Strip timezone if present
+        if hasattr(dtype, "time_zone") and dtype.time_zone is not None:
+            df = df.with_columns(pl.col("Date").dt.convert_time_zone("UTC").dt.replace_time_zone(None))
+
+        # 2. CRITICAL FIX: Cast to uniform microsecond resolution to prevent ns vs ms join mismatches
+        # This prevents outer_coalesce from failing silently and creating flatline nulls
+        df = df.with_columns(pl.col("Date").cast(pl.Datetime("us")))
+
+        # 3. Fallback: If it was read as a String from a corrupted parquet, force parse it
+        if df.schema["Date"] != pl.Datetime("us"):
+            try:
+                df = df.with_columns(pl.col("Date").str.to_datetime(time_unit="us"))
+            except:
+                pass
+
+        return df
     def _load_universe_data(self, universe: list):
         """Loads historical data for the selected universe."""
         frames = []

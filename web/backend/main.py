@@ -248,6 +248,13 @@ async def hivemind_status():
     with open(path, "r") as f:
         return json.load(f)
 
+@app.get("/api/statarb/status")
+async def statarb_status():
+    path = os.path.join(BASE_DIR, "data", "stat_arb_ui.json")
+    if not os.path.exists(path): return {"active": False, "top_pairs": [], "active_pair": None}
+    with open(path, "r") as f:
+        return json.load(f)
+
 @app.get("/api/hivemind/logs")
 async def hivemind_logs():
     path = os.path.join(BASE_DIR, "data", "quant_daemon.log")
