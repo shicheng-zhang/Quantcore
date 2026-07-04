@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Predictions - QuantCore{% endblock %}
-
 {% block content %}
 <div class="flex flex-wrap gap-4 mb-6">
     <div>
@@ -49,17 +48,12 @@
 </div>
 
 <div class="bg-gray-800 rounded-lg p-6 mb-6">
-    <h2 class="text-xl font-bold mb-4">Historical Context</h2>
-    <div id="context-chart" style="height: 400px;"></div>
-</div>
-
-<div class="bg-gray-800 rounded-lg p-6 mb-6">
-    <h2 class="text-xl font-bold mb-4">5-Step Price Forecast</h2>
-    <div id="forecast-chart" style="height: 400px;"></div>
+    <h2 class="text-xl font-bold mb-4">Predictive Horizon (Historical Anchor + Future Forecast)</h2>
+    <div id="horizon-chart" style="height: 500px;"></div>
 </div>
 
 <div class="bg-gray-800 rounded-lg p-6">
-    <h2 class="text-xl font-bold mb-4">Detailed Predictions</h2>
+    <h2 class="text-xl font-bold mb-4">Detailed Forecast Matrix</h2>
     <div id="predictions-table"></div>
 </div>
 {% endblock %}
@@ -67,17 +61,11 @@
 {% block scripts %}
 <script>
 let currentSymbol = 'AAPL';
-
 const intervalPeriodMap = {
-    "1m": ["1d", "5d", "7d"],
-    "5m": ["1d", "5d", "1mo", "2mo"],
-    "15m": ["1d", "5d", "1mo", "2mo"],
-    "30m": ["1d", "5d", "1mo", "2mo"],
-    "1h": ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
-    "1d": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"],
-    "1wk": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"]
+    "1m": ["1d", "5d", "7d"], "5m": ["1d", "5d", "1mo", "2mo"], "15m": ["1d", "5d", "1mo", "2mo"],
+    "30m": ["1d", "5d", "1mo", "2mo"], "1h": ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
+    "1d": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"], "1wk": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"]
 };
-
 const periodText = {
     "1d": "1 Day", "5d": "5 Days", "7d": "7 Days", "1mo": "1 Month", "2mo": "2 Months",
     "3mo": "3 Months", "6mo": "6 Months", "ytd": "YTD", "1y": "1 Year",
@@ -88,30 +76,22 @@ function updatePeriodOptions() {
     const interval = document.getElementById('interval-select').value;
     const periodSelect = document.getElementById('period-select');
     const validPeriods = intervalPeriodMap[interval] || intervalPeriodMap["1d"];
-
     const currentPeriod = periodSelect.value;
     periodSelect.innerHTML = '';
-
     validPeriods.forEach(p => {
         const opt = document.createElement('option');
-        opt.value = p;
-        opt.text = periodText[p] || p;
+        opt.value = p; opt.text = periodText[p] || p;
         if (p === currentPeriod) opt.selected = true;
         periodSelect.appendChild(opt);
     });
-
-    if (!validPeriods.includes(periodSelect.value)) {
-        periodSelect.value = validPeriods[validPeriods.length - 1];
-    }
+    if (!validPeriods.includes(periodSelect.value)) periodSelect.value = validPeriods[validPeriods.length - 1];
 }
 
 async function loadSymbols() {
     const symbols = await fetch('/api/symbols').then(r => r.json());
     const select = document.getElementById('symbol-select');
     select.innerHTML = '';
-    symbols.forEach(s => {
-        select.innerHTML += `<option value="${s}" ${s === currentSymbol ? 'selected' : ''}>${s}</option>`;
-    });
+    symbols.forEach(s => select.innerHTML += `<option value="${s}" ${s === currentSymbol ? 'selected' : ''}>${s}</option>`);
 }
 
 async function loadPredictions() {
@@ -130,57 +110,68 @@ async function loadPredictions() {
     document.getElementById('zscore').textContent = data.zscore.toFixed(2);
     document.getElementById('volatility').textContent = data.volatility.toFixed(2);
 
-    if (data.historical) {
+    if (data.historical && data.predictions) {
         const h = data.historical;
+        const preds = data.predictions;
+
+        // 1. Prepare Historical Data
+        const histDates = h.dates;
+        const histPrices = h.prices;
+        const histSMA = h.sma_20;
+        const lastHistPrice = histPrices[histPrices.length - 1];
+
+        // 2. Prepare Future Forecast Data
+        const futureLabels = preds.map(p => p.date || `T+${p.day}`);
+        const futurePrices = preds.map(p => p.price);
+
+        // Confidence Bands (using volatility and time horizon)
+        const vol = data.volatility / 100; // Convert to decimal
+        const futureUpper = preds.map(p => p.price * (1 + (vol * p.day * 0.5)));
+        const futureLower = preds.map(p => p.price * (1 - (vol * p.day * 0.5)));
+
+        // 3. Merge Axes
+        const allDates = [...histDates, ...futureLabels];
+        const allPrices = [...histPrices, ...Array(preds.length).fill(null)];
+        const allSMA = [...histSMA, ...Array(preds.length).fill(null)];
+
+        // Forecast line must connect to the last historical point
+        const forecastLine = [...Array(histDates.length - 1).fill(null), lastHistPrice, ...futurePrices];
+        const upperBand = [...Array(histDates.length - 1).fill(null), lastHistPrice, ...futureUpper];
+        const lowerBand = [...Array(histDates.length - 1).fill(null), lastHistPrice, ...futureLower];
+
+        // 4. Plotly Traces
         const traces = [
-            { x: h.dates, y: h.prices, type: 'scatter', mode: 'lines', name: 'Price', line: {color: '#3b82f6', width: 2} },
-            { x: h.dates, y: h.sma_20, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} }
+            { x: allDates, y: allPrices, type: 'scatter', mode: 'lines', name: 'Historical Price', line: {color: '#3b82f6', width: 2} },
+            { x: allDates, y: allSMA, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} },
+            { x: allDates, y: upperBand, type: 'scatter', mode: 'lines', line: {width: 0}, showlegend: false, hoverinfo: 'skip' },
+            { x: allDates, y: lowerBand, type: 'scatter', mode: 'lines', line: {width: 0}, fill: 'tonexty', fillcolor: 'rgba(139, 92, 246, 0.2)', name: 'Confidence Cone' },
+            { x: allDates, y: forecastLine, type: 'scatter', mode: 'lines+markers', name: 'AI Forecast', line: {color: '#8b5cf6', width: 3, dash: 'dot'}, marker: {size: 8, color: '#8b5cf6'} }
         ];
 
-        const allY = [...h.prices, ...h.sma_20].filter(v => v != null && !isNaN(v) && v > 0);
-        const sortedPrices = [...h.prices].filter(v => v > 0).sort((a, b) => a - b);
-        let minY, maxY;
-        if (sortedPrices.length > 10) {
-            minY = sortedPrices[Math.floor(sortedPrices.length * 0.02)];
-            maxY = sortedPrices[Math.floor(sortedPrices.length * 0.98)];
-        } else {
-            minY = Math.min(...allY);
-            maxY = Math.max(...allY);
-        }
+        // Y-Axis scaling
+        const allY = [...histPrices, ...histSMA, ...futurePrices, ...futureUpper, ...futureLower].filter(v => v != null && v > 0);
+        const minY = Math.min(...allY);
+        const maxY = Math.max(...allY);
         const yPadding = (maxY - minY) * 0.10;
 
-        Plotly.newPlot('context-chart', traces, {
+        const layout = {
             paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
             xaxis: { gridcolor: '#374151', autorange: true, rangeslider: { visible: false } },
             yaxis: { gridcolor: '#374151', range: [minY - yPadding, maxY + yPadding], rangemode: 'normal' },
             margin: {t: 20, b: 40, l: 60, r: 20}, legend: {orientation: 'h', y: 1.1, x: 0.5}, hovermode: 'x unified'
-        }, {responsive: true});
+        };
+
+        Plotly.newPlot('horizon-chart', traces, layout, {responsive: true});
     }
 
-    const days = data.predictions.map(p => `Step ${p.day}`);
-    const prices = data.predictions.map(p => p.price);
-    const forecastTraces = [{
-        x: days, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Predicted Price',
-        line: {color: '#8b5cf6', width: 3}, marker: {size: 10, color: '#8b5cf6'}
-    }];
-
-    const fMinY = Math.min(...prices, data.current_price);
-    const fMaxY = Math.max(...prices, data.current_price);
-    const fPadding = (fMaxY - fMinY) * 0.1;
-
-    Plotly.newPlot('forecast-chart', forecastTraces, {
-        paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
-        xaxis: {gridcolor: '#374151'}, yaxis: {gridcolor: '#374151', range: [fMinY - fPadding, fMaxY + fPadding]},
-        margin: {t: 20, b: 40, l: 60, r: 20}
-    }, {responsive: true});
-
+    // Render Table
     const tableDiv = document.getElementById('predictions-table');
     let tableHTML = '<table class="w-full"><thead><tr class="border-b border-gray-700"><th class="text-left py-2">Step</th><th class="text-right py-2">Predicted Price</th><th class="text-right py-2">Change</th><th class="text-right py-2">Confidence</th></tr></thead><tbody>';
     data.predictions.forEach(p => {
         const change = ((p.price - data.current_price) / data.current_price * 100);
         const changeColor = change > 0 ? 'text-green-400' : 'text-red-400';
         tableHTML += `<tr class="border-b border-gray-700">
-            <td class="py-2">Step ${p.day}</td>
+            <td class="py-2">T+${p.day}</td>
             <td class="py-2 text-right">$${p.price.toFixed(2)}</td>
             <td class="py-2 text-right ${changeColor}">${change > 0 ? '+' : ''}${change.toFixed(2)}%</td>
             <td class="py-2 text-right">${(p.confidence * 100).toFixed(0)}%</td>
@@ -193,7 +184,6 @@ async function loadPredictions() {
 document.getElementById('symbol-select').addEventListener('change', loadPredictions);
 document.getElementById('interval-select').addEventListener('change', () => { updatePeriodOptions(); loadPredictions(); });
 document.getElementById('period-select').addEventListener('change', loadPredictions);
-
 updatePeriodOptions();
 loadSymbols().then(() => loadPredictions());
 </script>

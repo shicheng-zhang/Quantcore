@@ -24,8 +24,9 @@ analytics: AnalyticsEngine = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global analytics
+    global analytics, paper_broker
     analytics = AnalyticsEngine()
+    paper_broker = PaperBroker()  # Safe from Uvicorn reloader lock
     yield
 
 app = FastAPI(title="QuantCore Dashboard", lifespan=lifespan)
@@ -142,6 +143,36 @@ async def run_backtest(req: BacktestRequest):
     from quantcore.research.backtester import Backtester
     bt = Backtester()
     return await asyncio.to_thread(bt.run_cross_sectional_momentum, req.universe, req.lookback, req.slippage_bps)
+
+
+# --- PAPER TRADING GATEWAY (ROUTE 3) ---
+from python.quantcore.broker.paper_broker import PaperBroker
+paper_broker = None  # Initialized in lifespan to prevent Uvicorn reloader DB lock
+
+@app.get("/paper", response_class=HTMLResponse)
+async def paper_trading_desk(request: Request):
+    return templates.TemplateResponse(request, "paper_trading.html")
+
+@app.get("/api/paper/state")
+async def get_paper_state():
+    state = paper_broker.ledger.get_state()
+    trades = paper_broker.ledger.get_recent_trades()
+    return {"state": state, "trades": trades}
+
+class PaperOrder(BaseModel):
+    symbol: str
+    side: str
+    qty: int
+    algo: str
+
+@app.post("/api/paper/order")
+async def submit_paper_order(order: PaperOrder):
+    return paper_broker.submit_order(order.symbol, order.side, order.qty, order.algo)
+
+@app.post("/api/paper/reset")
+async def reset_paper_account():
+    paper_broker.ledger.reset_account()
+    return {"status": "RESET"}
 
 @app.get("/api/overview")
 async def get_overview(): return await asyncio.to_thread(analytics.get_overview)
@@ -311,3 +342,69 @@ async def get_nexus_logs():
     with open(LOG_FILE, "r") as f:
         lines = f.readlines()
         return {"logs": "".join(lines[-30:])}
+
+# --- AUTOPILOT CONTROL ---
+@app.post("/api/paper/autopilot/engage")
+async def engage_autopilot():
+    with open("data/autopilot.flag", "w") as f: f.write("ACTIVE")
+    return {"status": "ENGAGED"}
+
+@app.post("/api/paper/autopilot/disengage")
+async def disengage_autopilot():
+    if os.path.exists("data/autopilot.flag"): os.remove("data/autopilot.flag")
+    return {"status": "DISENGAGED"}
+
+@app.get("/api/paper/autopilot/status")
+async def autopilot_status():
+    return {"active": os.path.exists("data/autopilot.flag")}
+
+# --- SATELLITE LAYER (ALT DATA) ---
+from python.quantcore.alt_data.satellite import SatelliteEngine
+satellite_engine = SatelliteEngine()
+
+@app.get("/alt_data", response_class=HTMLResponse)
+async def alt_data_lab(request: Request): return templates.TemplateResponse(request, "alt_data.html")
+
+@app.get("/api/alt_data/feed")
+async def get_alt_feed():
+    satellite_engine.generate_feed()
+    if not os.path.exists("data/satellite_feed.json"): return []
+    with open("data/satellite_feed.json", "r") as f: return json.load(f)
+
+@app.get("/rl_lab", response_class=HTMLResponse)
+async def rl_lab(request: Request): return templates.TemplateResponse(request, "rl_lab.html")
+
+@app.post("/api/rl/train")
+async def train_rl():
+    import subprocess
+    subprocess.Popen([sys.executable, "python/quantcore/rl/train.py"], cwd=BASE_DIR)
+    subprocess.Popen([sys.executable, "python/quantcore/rl/export_cpp.py"], cwd=BASE_DIR)
+    return {"status": "TRAINING_STARTED"}
+
+# --- CIO WAR ROOM (ROUTE 4) ---
+from python.quantcore.cio.attribution import CIOAttributor
+cio_attributor = CIOAttributor()
+
+@app.get("/cio", response_class=HTMLResponse)
+async def cio_war_room(request: Request): return templates.TemplateResponse(request, "cio.html")
+
+@app.get("/api/cio/metrics")
+async def get_cio_metrics():
+    return cio_attributor.get_metrics()
+
+# --- TIME MACHINE (ROUTE 5) ---
+from python.quantcore.replay.time_machine import TimeMachine
+time_machine = TimeMachine()
+
+@app.get("/time_machine", response_class=HTMLResponse)
+async def time_machine_page(request: Request): return templates.TemplateResponse(request, "time_machine.html")
+
+@app.post("/api/time_machine/run")
+async def run_time_machine(req: dict):
+    scenario = req.get("scenario", "2022_crypto_winter")
+    return await asyncio.to_thread(time_machine.run_stress_test, scenario)
+
+@app.get("/api/time_machine/report")
+async def get_tm_report():
+    if not os.path.exists("data/time_machine_report.json"): return {"status": "IDLE"}
+    with open("data/time_machine_report.json", "r") as f: return json.load(f)

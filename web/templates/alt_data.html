@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Satellite Lab - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-pink-400">The Satellite Layer <span class="text-sm text-gray-500 font-normal">(Alternative Data)</span></h1>
+        <p class="text-gray-400">Orthogonal signals: NLP News Sentiment & Synthetic On-Chain Whale Flows.</p>
+    </div>
+    <span class="px-3 py-1 rounded text-xs font-bold bg-pink-900 text-pink-300 animate-pulse">LIVE FEED ACTIVE</span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6 border border-pink-500/30">
+        <h2 class="text-xl font-bold mb-4 text-pink-400">NLP News Sentiment Stream</h2>
+        <div id="news-feed" class="space-y-3 h-96 overflow-y-auto pr-2"><p class="text-gray-500 text-center py-8">Waiting for satellite uplink...</p></div>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
+        <h2 class="text-xl font-bold mb-4 text-blue-400">On-Chain Whale Radar</h2>
+        <div id="whale-feed" class="space-y-3 h-96 overflow-y-auto pr-2"><p class="text-gray-500 text-center py-8">Waiting for on-chain data...</p></div>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 border border-yellow-500/30">
+    <h2 class="text-xl font-bold mb-2 text-yellow-400">Autopilot Risk Veto Status</h2>
+    <div class="grid grid-cols-3 gap-4 text-center">
+        <div class="bg-gray-900 p-4 rounded"><p class="text-xs text-gray-400 uppercase">Current Regime</p><p class="text-2xl font-bold" id="regime-status">NEUTRAL</p></div>
+        <div class="bg-gray-900 p-4 rounded"><p class="text-xs text-gray-400 uppercase">Avg Sentiment</p><p class="text-2xl font-bold" id="avg-sentiment">0.00</p></div>
+        <div class="bg-gray-900 p-4 rounded"><p class="text-xs text-gray-400 uppercase">Veto Status</p><p class="text-2xl font-bold text-green-400" id="veto-status">CLEAR</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadFeed() {
+    try {
+        const feed = await fetch('/api/alt_data/feed').then(r => r.json());
+        const newsDiv = document.getElementById('news-feed');
+        const whaleDiv = document.getElementById('whale-feed');
+        let newsHTML = '', whaleHTML = '', totalSentiment = 0, newsCount = 0;
+
+        feed.forEach(item => {
+            if (item.type === 'NEWS_SENTIMENT') {
+                newsCount++; totalSentiment += item.sentiment_score;
+                const color = item.sentiment_score > 0.2 ? 'text-green-400' : (item.sentiment_score < -0.2 ? 'text-red-400' : 'text-gray-400');
+                const icon = item.sentiment_score > 0.2 ? '📈' : (item.sentiment_score < -0.2 ? '📉' : '➖');
+                newsHTML += `<div class="bg-gray-900 p-3 rounded border-l-4 ${item.sentiment_score > 0.2 ? 'border-green-500' : (item.sentiment_score < -0.2 ? 'border-red-500' : 'border-gray-600')}"><div class="flex justify-between"><span class="text-sm text-gray-200 flex-1">${icon} ${item.headline}</span><span class="font-mono font-bold ${color} ml-2">${item.sentiment_score > 0 ? '+' : ''}${item.sentiment_score.toFixed(2)}</span></div></div>`;
+            } else if (item.type === 'WHALE_FLOW') {
+                const flowColor = item.net_flow_btc > 200 ? 'text-red-400' : (item.net_flow_btc < -200 ? 'text-green-400' : 'text-gray-400');
+                const signalBg = item.signal === 'SELL_PRESSURE' ? 'bg-red-900/50 text-red-300' : (item.signal === 'ACCUMULATION' ? 'bg-green-900/50 text-green-300' : 'bg-gray-700 text-gray-300');
+                whaleHTML += `<div class="bg-gray-900 p-3 rounded flex justify-between"><div><span class="font-bold text-white">🐋 ${item.asset} Flow</span><span class="ml-2 px-2 py-0.5 rounded text-xs font-bold ${signalBg}">${item.signal}</span></div><span class="font-mono font-bold ${flowColor}">${item.net_flow_btc > 0 ? '+' : ''}${item.net_flow_btc.toFixed(1)} BTC</span></div>`;
+            }
+        });
+        if (newsHTML) newsDiv.innerHTML = newsHTML;
+        if (whaleHTML) whaleDiv.innerHTML = whaleHTML;
+
+        if (newsCount > 0) {
+            const avg = totalSentiment / newsCount;
+            document.getElementById('avg-sentiment').innerText = (avg > 0 ? '+' : '') + avg.toFixed(2);
+            let regime = "NEUTRAL", regimeColor = "text-gray-400";
+            if (avg > 0.3) { regime = "BULLISH"; regimeColor = "text-green-400"; }
+            else if (avg < -0.3) { regime = "BEARISH"; regimeColor = "text-red-400"; }
+            document.getElementById('regime-status').innerText = regime;
+            document.getElementById('regime-status').className = `text-2xl font-bold ${regimeColor}`;
+            const vetoEl = document.getElementById('veto-status');
+            if (Math.abs(avg) > 0.6) { vetoEl.innerText = "HOSTILE (VETO)"; vetoEl.className = "text-2xl font-bold text-red-500 animate-pulse"; }
+        }
+    } catch(e) { console.error(e); }
+}
+loadFeed(); setInterval(loadFeed, 3000);
+</script>
+{% endblock %}

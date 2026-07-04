@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block title %}Paper Trading Desk - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-amber-400">Paper Trading Desk <span class="text-sm text-gray-500 font-normal">(Deep Sim)</span></h1>
+        <p class="text-gray-400">Realistic fills, Almgren-Chriss slippage, and DuckDB ledger tracking. Zero real capital.</p>
+    </div>
+    <div class="flex gap-2">
+            <button onclick="toggleAutopilot()" id="autopilot-btn" class="bg-gray-700 hover:bg-purple-800 px-4 py-2 rounded text-sm font-bold uppercase">Engage Autopilot</button>
+            <button onclick="resetAccount()" class="bg-gray-700 hover:bg-red-800 px-4 py-2 rounded text-sm font-bold uppercase">Reset Account</button>
+        </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-green-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Total Equity</h3>
+        <p class="text-2xl font-bold" id="stat-equity">$1,000,000.00</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-blue-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Cash Balance</h3>
+        <p class="text-2xl font-bold text-blue-400" id="stat-cash">$1,000,000.00</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-purple-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Positions Value</h3>
+        <p class="text-2xl font-bold text-purple-400" id="stat-pos-val">$0.00</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-amber-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Total P&L</h3>
+        <p class="text-2xl font-bold" id="stat-pnl">$0.00</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- ORDER TICKET -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-amber-500/30">
+        <h2 class="text-xl font-bold mb-4 text-amber-400">Order Ticket</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Symbol</label>
+                <select id="ord-symbol" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+                    <option value="">Loading symbols...</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setSide('BUY')" id="btn-buy" class="bg-green-800 hover:bg-green-700 p-2 rounded font-bold text-sm">BUY</button>
+                <button onclick="setSide('SELL')" id="btn-sell" class="bg-gray-700 hover:bg-red-700 p-2 rounded font-bold text-sm">SELL</button>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Quantity</label>
+                <input type="number" id="ord-qty" value="100" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Execution Algo</label>
+                <select id="ord-algo" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+                    <option value="MARKET">Market (Retail - High Slip)</option>
+                    <option value="VWAP">VWAP (Inst - Low Slip)</option>
+                </select>
+            </div>
+            <button onclick="submitOrder()" id="submit-btn" class="w-full bg-amber-600 hover:bg-amber-500 p-3 rounded font-bold uppercase tracking-wider">Submit Order</button>
+            <div id="ord-feedback" class="text-xs text-center h-4"></div>
+        </div>
+    </div>
+
+    <!-- POSITIONS -->
+    <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-bold mb-4">Open Positions</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-gray-400 uppercase bg-gray-900">
+                    <tr>
+                        <th class="px-4 py-2">Symbol</th>
+                        <th class="px-4 py-2 text-right">Qty</th>
+                        <th class="px-4 py-2 text-right">Avg Cost</th>
+                        <th class="px-4 py-2 text-right">Mkt Price</th>
+                        <th class="px-4 py-2 text-right">Unrealized P&L</th>
+                    </tr>
+                </thead>
+                <tbody id="pos-table" class="divide-y divide-gray-700">
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No open positions.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- RECENT FILLS -->
+<div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <h2 class="text-xl font-bold mb-4">Recent Fills (Audit Trail)</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-900">
+                <tr>
+                    <th class="px-4 py-2">Time</th>
+                    <th class="px-4 py-2">Symbol</th>
+                    <th class="px-4 py-2">Side</th>
+                    <th class="px-4 py-2 text-right">Qty</th>
+                    <th class="px-4 py-2 text-right">Fill Price</th>
+                    <th class="px-4 py-2 text-right">Theo Price</th>
+                    <th class="px-4 py-2 text-right">Slippage (bps)</th>
+                </tr>
+            </thead>
+            <tbody id="fills-table" class="divide-y divide-gray-700">
+                <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No trades executed yet.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSide = 'BUY';
+let currentPrices = {};
+
+async function loadPaperSymbols() {
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+    const select = document.getElementById('ord-symbol');
+    select.innerHTML = '';
+    if (symbols.length === 0) {
+        select.innerHTML = '<option value="">No symbols in database</option>';
+        return;
+    }
+    symbols.forEach(s => select.innerHTML += `<option value="${s}">${s}</option>`);
+}
+
+function setSide(side) {
+    currentSide = side;
+    document.getElementById('btn-buy').className = side === 'BUY' ? 'bg-green-600 p-2 rounded font-bold text-sm' : 'bg-gray-700 p-2 rounded font-bold text-sm';
+    document.getElementById('btn-sell').className = side === 'SELL' ? 'bg-red-600 p-2 rounded font-bold text-sm' : 'bg-gray-700 p-2 rounded font-bold text-sm';
+}
+
+async function submitOrder() {
+    const btn = document.getElementById('submit-btn');
+    const fb = document.getElementById('ord-feedback');
+    btn.disabled = true; btn.innerText = "ROUTING...";
+
+    const payload = {
+        symbol: document.getElementById('ord-symbol').value,
+        side: currentSide,
+        qty: parseInt(document.getElementById('ord-qty').value),
+        algo: document.getElementById('ord-algo').value
+    };
+
+    try {
+        const res = await fetch('/api/paper/order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.status === 'FILLED') {
+            fb.innerHTML = `<span class="text-green-400">FILLED ${data.qty} @ $${data.fill_price} (Slip: ${data.slippage_bps} bps)</span>`;
+            loadState();
+        } else {
+            fb.innerHTML = `<span class="text-red-400">REJECTED: ${data.reason}</span>`;
+        }
+    } catch(e) {
+        fb.innerHTML = `<span class="text-red-400">Network Error</span>`;
+    } finally {
+        btn.disabled = false; btn.innerText = "SUBMIT ORDER";
+    }
+}
+
+async function resetAccount() {
+    if(!confirm("Reset paper account to $1,000,000?")) return;
+    await fetch('/api/paper/reset', {method: 'POST'});
+    loadState();
+}
+
+async function loadState() {
+    try {
+        const res = await fetch('/api/paper/state').then(r => r.json());
+        const state = res.state;
+        const trades = res.trades;
+
+        // Fetch live prices for positions
+        const symbols = state.positions.map(p => p[0]);
+        if(symbols.length > 0) {
+            // Quick mock price fetch for UI update (in real app, stream this)
+            // For now, we'll just use avg_cost as proxy if yfinance is too slow,
+            // but let's try to grab them via the existing trend API
+            for(let sym of symbols) {
+                try {
+                    const t = await fetch(`/api/trend/${sym}?period=5d&interval=1d`).then(r=>r.json());
+                    if(t.current_price) currentPrices[sym] = t.current_price;
+                } catch(e) { currentPrices[sym] = state.positions.find(p=>p[0]===sym)[2]; }
+            }
+        }
+
+        let posVal = 0;
+        let unrealizedPnl = 0;
+        const posTable = document.getElementById('pos-table');
+        posTable.innerHTML = '';
+
+        if(state.positions.length === 0) {
+            posTable.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No open positions.</td></tr>';
+        } else {
+            state.positions.forEach(p => {
+                const [sym, qty, avg] = p;
+                const mkt = currentPrices[sym] || avg;
+                const val = qty * mkt;
+                const pnl = (mkt - avg) * qty;
+                posVal += val;
+                unrealizedPnl += pnl;
+
+                posTable.innerHTML += `
+                    <tr class="hover:bg-gray-700">
+                        <td class="px-4 py-2 font-bold">${sym}</td>
+                        <td class="px-4 py-2 text-right">${qty}</td>
+                        <td class="px-4 py-2 text-right">$${avg.toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right">$${mkt.toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}">$${pnl.toFixed(2)}</td>
+                    </tr>`;
+            });
+        }
+
+        const totalEquity = state.cash + posVal;
+        const totalPnl = totalEquity - state.initial_cash;
+
+        document.getElementById('stat-equity').innerText = `$${totalEquity.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('stat-cash').innerText = `$${state.cash.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('stat-pos-val').innerText = `$${posVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+        const pnlEl = document.getElementById('stat-pnl');
+        pnlEl.innerText = `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        pnlEl.className = `text-2xl font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
+
+        // Fills Table
+        const fillsTable = document.getElementById('fills-table');
+        fillsTable.innerHTML = '';
+        if(trades.length === 0) {
+            fillsTable.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No trades executed yet.</td></tr>';
+        } else {
+            trades.forEach(t => {
+                // t: ts, symbol, side, qty, price, slip, comm
+                const slipColor = t[5] > 5 ? 'text-red-400' : (t[5] > 2 ? 'text-yellow-400' : 'text-green-400');
+                fillsTable.innerHTML += `
+                    <tr class="hover:bg-gray-700">
+                        <td class="px-4 py-2 text-xs text-gray-400">${new Date(t[0]).toLocaleTimeString()}</td>
+                        <td class="px-4 py-2 font-bold">${t[1]}</td>
+                        <td class="px-4 py-2 ${t[2] === 'BUY' ? 'text-green-400' : 'text-red-400'}">${t[2]}</td>
+                        <td class="px-4 py-2 text-right">${t[3]}</td>
+                        <td class="px-4 py-2 text-right">$${t[4].toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right text-gray-500">$${(t[4] - (t[4] * t[5]/10000)).toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right ${slipColor}">${t[5].toFixed(1)} bps</td>
+                    </tr>`;
+            });
+        }
+
+    } catch(e) { console.error(e); }
+}
+
+setSide('BUY');
+loadPaperSymbols();
+loadState();
+setInterval(loadState, 5000); // Refresh every 5s
+
+async function toggleAutopilot() {
+    const btn = document.getElementById('autopilot-btn');
+    const isActive = btn.classList.contains('bg-purple-600');
+    if (isActive) {
+        await fetch('/api/paper/autopilot/disengage', {method: 'POST'});
+        btn.innerText = "Engage Autopilot";
+        btn.className = "bg-gray-700 hover:bg-purple-800 px-4 py-2 rounded text-sm font-bold uppercase";
+    } else {
+        await fetch('/api/paper/autopilot/engage', {method: 'POST'});
+        btn.innerText = "AUTOPILOT ACTIVE";
+        btn.className = "bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm font-bold uppercase animate-pulse";
+    }
+}
+
+async function checkAutopilotStatus() {
+    const res = await fetch('/api/paper/autopilot/status').then(r => r.json());
+    const btn = document.getElementById('autopilot-btn');
+    if (res.active) {
+        btn.innerText = "AUTOPILOT ACTIVE";
+        btn.className = "bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm font-bold uppercase animate-pulse";
+    } else {
+        btn.innerText = "Engage Autopilot";
+        btn.className = "bg-gray-700 hover:bg-purple-800 px-4 py-2 rounded text-sm font-bold uppercase";
+    }
+}
+checkAutopilotStatus();
+setInterval(checkAutopilotStatus, 5000);
+
+</script>
+{% endblock %}

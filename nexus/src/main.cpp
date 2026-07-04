@@ -23,6 +23,7 @@
 #include "../include/shared_bridge.h"
 
 #include "../include/ghost_exchange.h"
+#include "../include/rl_policy.h"
 
 #include <ixwebsocket/IXNetSystem.h>
 #include <ixwebsocket/IXWebSocket.h>

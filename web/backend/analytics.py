@@ -194,13 +194,30 @@ class AnalyticsEngine:
             current_zscore = features["zscore_20"][-1] if features["zscore_20"] else 0
             current_vol = features["volatility"][-1] if features["volatility"] else 0
 
+            trend_data = self.get_trend_analysis(symbol, period, interval)
             predictions = []
             base_price = math_prices[-1]
+            
+            # --- FUTURE DATE INJECTION ---
+            last_date_str = trend_data['dates'][-1] if trend_data.get('dates') else None
+            try:
+                if interval in ['1d', '1wk', '1mo']:
+                    last_dt = datetime.strptime(last_date_str, '%Y-%m-%d')
+                else:
+                    last_dt = datetime.strptime(last_date_str, '%Y-%m-%d %H:%M')
+            except:
+                last_dt = datetime.now()
+
+            deltas = {'1m': timedelta(minutes=1), '5m': timedelta(minutes=5), '15m': timedelta(minutes=15),
+                      '30m': timedelta(minutes=30), '1h': timedelta(hours=1), '1d': timedelta(days=1),
+                      '1wk': timedelta(weeks=1), '1mo': timedelta(days=30)}
+            delta = deltas.get(interval, timedelta(days=1))
+
             for i in range(1, 6):
                 pred_price = base_price * (1 - current_zscore * 0.01 * i) if abs(current_zscore) > 1.5 else base_price * (1 + current_zscore * 0.005 * i)
-                predictions.append({"day": i, "price": pred_price, "confidence": max(0.5, 1.0 - abs(current_zscore) * 0.1)})
-
-            trend_data = self.get_trend_analysis(symbol, period, interval)
+                future_dt = last_dt + (delta * i)
+                future_str = future_dt.strftime('%Y-%m-%d') if interval in ['1d', '1wk', '1mo'] else future_dt.strftime('%Y-%m-%d %H:%M')
+                predictions.append({"day": i, "date": future_str, "price": pred_price, "confidence": max(0.5, 1.0 - abs(current_zscore) * 0.1)})
 
             return {
                 "symbol": symbol, "current_price": base_price, "predictions": predictions,

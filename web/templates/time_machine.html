@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Time Machine - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-violet-400">The Time Machine <span class="text-sm text-gray-500 font-normal">(Historical Stress Testing)</span></h1>
+        <p class="text-gray-400">Replay black-swan events at 1000x speed. How would the Autopilot survive a market crash?</p>
+    </div>
+    <div class="flex gap-4 items-center">
+        <select id="scenario-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+            <option value="2022_crypto_winter">2022 Crypto Winter (LUNA/FTX)</option>
+            <option value="2020_pandemic">2020 Pandemic Flash Crash</option>
+            <option value="baseline">Baseline Monte Carlo</option>
+        </select>
+        <button onclick="runStressTest()" id="run-btn" class="bg-violet-600 hover:bg-violet-700 px-6 py-2 rounded font-bold uppercase tracking-wider">Run Simulation</button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-red-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Max Drawdown</h3>
+        <p class="text-2xl font-bold text-red-400" id="kpi-dd">0.0%</p>
+        <p class="text-xs text-gray-500 mt-1" id="kpi-dd-date">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-yellow-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Recovery Time</h3>
+        <p class="text-2xl font-bold text-yellow-400" id="kpi-recovery">0 Days</p>
+        <p class="text-xs text-gray-500 mt-1">Time to new high-water mark</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-pink-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Satellite Vetoes</h3>
+        <p class="text-2xl font-bold text-pink-400" id="kpi-vetoes">0</p>
+        <p class="text-xs text-gray-500 mt-1">Hostile trades blocked</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-green-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Capital Saved</h3>
+        <p class="text-2xl font-bold text-green-400" id="kpi-saved">$0</p>
+        <p class="text-xs text-gray-500 mt-1">Drawdown avoided via Veto</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6 border border-violet-500/30">
+        <h2 class="text-xl font-bold mb-4 text-violet-400" id="chart-title">Historical Equity Curve</h2>
+        <div id="equity-chart" style="height: 400px;"></div>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-red-500/30">
+        <h2 class="text-xl font-bold mb-4 text-red-400">Underwater Plot (Drawdown)</h2>
+        <div id="drawdown-chart" style="height: 400px;"></div>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <h2 class="text-xl font-bold mb-4">Execution Reality Check</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <h3 class="text-sm font-bold text-gray-300 uppercase mb-2">Simulated Slippage Bleed</h3>
+            <p class="text-3xl font-bold text-orange-400" id="kpi-slip">0.0 bps</p>
+            <p class="text-xs text-gray-500 mt-2">Average execution cost during high-volatility crash periods. RL Agent dynamically shifts to passive limits to mitigate this.</p>
+        </div>
+        <div>
+            <h3 class="text-sm font-bold text-gray-300 uppercase mb-2">Final Simulated Equity</h3>
+            <p class="text-3xl font-bold text-white" id="kpi-final">$1,000,000</p>
+            <p class="text-xs text-gray-500 mt-2">Ending capital after surviving the stress test scenario and paying all simulated transaction costs.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runStressTest() {
+    const btn = document.getElementById('run-btn');
+    btn.innerText = "REPLAYING HISTORY..."; btn.disabled = true;
+    const scenario = document.getElementById('scenario-select').value;
+
+    try {
+        await fetch('/api/time_machine/run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({scenario: scenario})
+        });
+        loadReport();
+    } catch(e) { console.error(e); }
+    finally { btn.innerText = "RUN SIMULATION"; btn.disabled = false; }
+}
+
+async function loadReport() {
+    try {
+        const r = await fetch('/api/time_machine/report').then(r => r.json());
+        if (r.status === "IDLE") return;
+
+        document.getElementById('chart-title').innerText = r.crash_label;
+        document.getElementById('kpi-dd').innerText = `${r.max_dd_pct}%`;
+        document.getElementById('kpi-dd-date').innerText = `Hit on ${r.max_dd_date}`;
+        document.getElementById('kpi-recovery').innerText = r.recovery_days === 999 ? "NEVER" : `${r.recovery_days} Days`;
+        document.getElementById('kpi-vetoes').innerText = r.vetoes_triggered;
+        document.getElementById('kpi-saved').innerText = `$${r.veto_savings.toLocaleString()}`;
+        document.getElementById('kpi-slip').innerText = `${r.slippage_bps} bps`;
+        document.getElementById('kpi-final').innerText = `$${r.final_equity.toLocaleString()}`;
+
+        // Equity Chart
+        Plotly.newPlot('equity-chart', [
+            { x: r.dates, y: r.equity, type: 'scatter', mode: 'lines', name: 'Equity', line: {color: '#8b5cf6', width: 2}, fill: 'tozeroy', fillcolor: 'rgba(139, 92, 246, 0.1)' }
+        ], {
+            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+            xaxis: {gridcolor: '#374151'}, yaxis: {gridcolor: '#374151', title: 'USD'},
+            margin: {t: 20, b: 40, l: 60, r: 20}, showlegend: false
+        }, {responsive: true});
+
+        // Drawdown Chart
+        Plotly.newPlot('drawdown-chart', [
+            { x: r.dates, y: r.drawdown, type: 'scatter', mode: 'lines', name: 'Drawdown', line: {color: '#ef4444', width: 1}, fill: 'tozeroy', fillcolor: 'rgba(239, 68, 68, 0.2)' }
+        ], {
+            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+            xaxis: {gridcolor: '#374151'}, yaxis: {gridcolor: '#374151', title: 'Drawdown %'},
+            margin: {t: 20, b: 40, l: 60, r: 20}, showlegend: false
+        }, {responsive: true});
+
+    } catch(e) { console.error(e); }
+}
+loadReport();
+</script>
+{% endblock %}
