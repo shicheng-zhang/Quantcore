@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Volatility Desk - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-fuchsia-400">The Volatility Desk <span class="text-sm text-gray-500 font-normal">(Options & Greeks)</span></h1>
+        <p class="text-gray-400">Retail trades direction. Institutions trade the Volatility Surface and harvest Theta.</p>
+    </div>
+    <div class="flex gap-4 items-center">
+        <div>
+            <label class="block text-xs text-gray-400">Spot Price</label>
+            <input type="number" id="spot-input" value="65000" class="bg-gray-800 border border-gray-700 rounded px-3 py-1 w-28 text-white">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400">Base IV (%)</label>
+            <input type="number" id="iv-input" value="45" class="bg-gray-800 border border-gray-700 rounded px-3 py-1 w-24 text-white">
+        </div>
+        <button onclick="loadVol()" class="bg-fuchsia-600 hover:bg-fuchsia-700 px-4 py-2 rounded font-bold text-sm">Recalculate Surface</button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6 border border-fuchsia-500/30">
+        <h2 class="text-xl font-bold mb-4 text-fuchsia-400">3D Volatility Surface (The Smile)</h2>
+        <div id="surface-chart" style="height: 450px;"></div>
+        <p class="text-xs text-gray-500 mt-2">X: Strike | Y: Expiration | Z: Implied Volatility. Notice the "Skew" (OTM Puts are more expensive due to crash fear) and the term structure.</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-green-500/30">
+        <h2 class="text-xl font-bold mb-4 text-green-400">Theta Harvest Simulator</h2>
+        <p class="text-sm text-gray-400 mb-4">Simulate a Delta-Neutral Short Straddle. You sell the ATM Call and Put, and dynamically hedge the underlying to stay Delta-Neutral, harvesting daily time decay.</p>
+        <div class="space-y-4">
+            <div class="bg-gray-900 p-4 rounded">
+                <p class="text-xs text-gray-400 uppercase">Premium Collected</p>
+                <p class="text-2xl font-bold text-white" id="premium">$0.00</p>
+            </div>
+            <div class="bg-gray-900 p-4 rounded">
+                <p class="text-xs text-gray-400 uppercase">Daily Theta Decay</p>
+                <p class="text-2xl font-bold text-green-400" id="theta-decay">$0.00 / day</p>
+            </div>
+            <div class="bg-gray-900 p-4 rounded">
+                <p class="text-xs text-gray-400 uppercase">Net Portfolio Delta</p>
+                <p class="text-2xl font-bold text-blue-400" id="net-delta">0.000</p>
+                <p class="text-xs text-gray-500 mt-1">Hedged to zero via underlying spot.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Synthetic Options Chain (30 DTE)</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-700">
+                <tr>
+                    <th class="p-3 text-center" colspan="3">CALLS</th>
+                    <th class="p-3 text-center bg-gray-900" colspan="2">STRIKE</th>
+                    <th class="p-3 text-center" colspan="3">PUTS</th>
+                </tr>
+                <tr class="bg-gray-800">
+                    <th class="p-2">Theta</th>
+                    <th class="p-2">Delta</th>
+                    <th class="p-2">Price</th>
+                    <th class="p-2 bg-gray-900">Moneyness</th>
+                    <th class="p-2 bg-gray-900">K</th>
+                    <th class="p-2">Price</th>
+                    <th class="p-2">Delta</th>
+                    <th class="p-2">Theta</th>
+                </tr>
+            </thead>
+            <tbody id="chain-body" class="divide-y divide-gray-700 font-mono"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadVol() {
+    const spot = parseFloat(document.getElementById('spot-input').value);
+    const iv = parseFloat(document.getElementById('iv-input').value) / 100;
+
+    // 1. Load 3D Surface
+    const surf = await fetch(`/api/vol/surface?spot=${spot}&iv=${iv}`).then(r => r.json());
+    Plotly.newPlot('surface-chart', [{
+        x: surf.strikes, y: surf.expirations_days, z: surf.iv_matrix,
+        type: 'surface', colorscale: 'Jet', reversescale: true,
+        contours: { z: { show: true, usecolormap: true, highlightcolor: "#42f5e9", project: {z: true} } }
+    }], {
+        paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+        scene: {
+            xaxis: {title: 'Strike', gridcolor: '#374151'},
+            yaxis: {title: 'Days to Exp', gridcolor: '#374151'},
+            zaxis: {title: 'Implied Vol', gridcolor: '#374151'}
+        },
+        margin: {t: 20, b: 20, l: 20, r: 20}
+    }, {responsive: true});
+
+    // 2. Load Chain & Theta Sim
+    const chainData = await fetch(`/api/vol/chain?spot=${spot}&iv=${iv}&T_days=30`).then(r => r.json());
+    const tbody = document.getElementById('chain-body');
+    tbody.innerHTML = '';
+
+    let atmCallTheta = 0, atmPutTheta = 0, atmCallDelta = 0, atmPutDelta = 0;
+    let atmCallPrice = 0, atmPutPrice = 0;
+
+    chainData.chain.forEach(row => {
+        const isATM = row.moneyness >= 0.99 && row.moneyness <= 1.01;
+        const rowClass = isATM ? 'bg-fuchsia-900/30 font-bold' : 'hover:bg-gray-700';
+
+        if (isATM) {
+            atmCallTheta = row.call_theta; atmPutTheta = row.put_theta;
+            atmCallDelta = row.call_delta; atmPutDelta = row.put_delta;
+            atmCallPrice = row.call_price; atmPutPrice = row.put_price;
+        }
+
+        tbody.innerHTML += `<tr class="${rowClass}">
+            <td class="p-2 text-red-400">${row.call_theta.toFixed(2)}</td>
+            <td class="p-2 text-blue-400">${row.call_delta.toFixed(3)}</td>
+            <td class="p-2 text-green-400">${row.call_price.toFixed(2)}</td>
+            <td class="p-2 bg-gray-900 text-center">${row.moneyness.toFixed(3)}</td>
+            <td class="p-2 bg-gray-900 text-center font-bold text-white">${row.strike}</td>
+            <td class="p-2 text-green-400">${row.put_price.toFixed(2)}</td>
+            <td class="p-2 text-red-400">${row.put_delta.toFixed(3)}</td>
+            <td class="p-2 text-red-400">${row.put_theta.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    // Update Theta Harvest Dashboard (Short Straddle = Short Call + Short Put)
+    const totalPremium = (atmCallPrice + atmPutPrice) * 100; // Standard 100 share multiplier
+    const dailyTheta = -(atmCallTheta + atmPutTheta) * 100; // Shorting means we GAIN the theta decay
+    const netDelta = (atmCallDelta + atmPutDelta); // Roughly 0.5 + -0.5 = 0
+
+    document.getElementById('premium').innerText = `$${totalPremium.toFixed(2)}`;
+    document.getElementById('theta-decay').innerText = `+$${dailyTheta.toFixed(2)} / day`;
+    document.getElementById('net-delta').innerText = netDelta.toFixed(3);
+}
+loadVol();
+</script>
+{% endblock %}

@@ -1,3 +1,4 @@
+import numpy as np
 import sys
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
@@ -408,3 +409,61 @@ async def run_time_machine(req: dict):
 async def get_tm_report():
     if not os.path.exists("data/time_machine_report.json"): return {"status": "IDLE"}
     with open("data/time_machine_report.json", "r") as f: return json.load(f)
+
+# --- RISK COMMITTEE GAUNTLET ---
+from python.quantcore.risk.gauntlet import RiskCommittee
+risk_committee = RiskCommittee()
+
+class GauntletRequest(BaseModel):
+    strategy_name: str
+    observed_sr: float
+    num_trials: int
+    universe: List[str]
+
+@app.post("/api/risk/gauntlet")
+async def run_gauntlet_api(req: GauntletRequest):
+    # Run in thread to prevent blocking the ASGI server during the heavy Time Machine sim
+    return await asyncio.to_thread(
+        risk_committee.evaluate_strategy,
+        req.strategy_name, req.observed_sr, req.num_trials, req.universe
+    )
+
+# --- ALPHA DECAY MONITOR (MLOps) ---
+from python.quantcore.mlops.decay_monitor import DecayMonitor
+decay_monitor = DecayMonitor()
+
+@app.get("/alpha_decay", response_class=HTMLResponse)
+async def alpha_decay_page(request: Request): return templates.TemplateResponse(request, "alpha_decay.html")
+
+@app.get("/api/mlops/health")
+async def get_model_health():
+    results, history = await asyncio.to_thread(decay_monitor.evaluate_models)
+    return {"models": results, "history": history}
+
+# --- VOLATILITY DESK (ROUTE 7) ---
+from python.quantcore.vol.black_scholes import BlackScholes, VolSurface
+
+@app.get("/volatility", response_class=HTMLResponse)
+async def vol_desk(request: Request): return templates.TemplateResponse(request, "volatility.html")
+
+@app.get("/api/vol/surface")
+async def get_vol_surface(spot: float = 65000.0, iv: float = 0.45):
+    return VolSurface.generate_surface(spot, iv)
+
+@app.get("/api/vol/chain")
+async def get_options_chain(spot: float = 65000.0, iv: float = 0.45, T_days: int = 30):
+    T = T_days / 365.0
+    r = 0.05
+    strikes = np.linspace(spot * 0.9, spot * 1.1, 9)
+    chain = []
+    for K in strikes:
+        call_p = BlackScholes.price(spot, K, T, r, iv, 'call')
+        put_p = BlackScholes.price(spot, K, T, r, iv, 'put')
+        call_g = BlackScholes.greeks(spot, K, T, r, iv, 'call')
+        put_g = BlackScholes.greeks(spot, K, T, r, iv, 'put')
+        chain.append({
+            "strike": round(K, 2), "moneyness": round(K/spot, 3),
+            "call_price": round(call_p, 2), "call_delta": round(call_g['delta'], 3), "call_theta": round(call_g['theta'], 2),
+            "put_price": round(put_p, 2), "put_delta": round(put_g['delta'], 3), "put_theta": round(put_g['theta'], 2)
+        })
+    return {"spot": spot, "T_days": T_days, "chain": chain}

@@ -16,7 +16,10 @@
             <input type="number" id="bt-slippage" value="5" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white">
         </div>
         <div class="flex items-end">
-            <button onclick="runBacktest()" id="bt-btn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded font-bold w-full">Run Backtest</button>
+            <div class="grid grid-cols-2 gap-2 w-full">
+            <button onclick="runBacktest()" id="bt-btn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded font-bold">Run Backtest</button>
+            <button onclick="submitToRiskCommittee()" id="risk-btn" class="bg-red-800 hover:bg-red-900 border border-red-500 px-6 py-2 rounded font-bold text-xs uppercase tracking-wider opacity-50 cursor-not-allowed" disabled>Submit to Risk Committee</button>
+        </div>
         </div>
     </div>
 </div>
@@ -129,5 +132,90 @@ async function runBacktest() {
     } catch(e) { alert("Backtest failed: " + e); }
     finally { btn.innerText = "RUN BACKTEST"; btn.disabled = false; }
 }
+
+let lastBacktestResults = null;
+
+// Intercept the fetch to capture the backtest results and unlock the Risk button
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const response = await originalFetch.apply(this, args);
+    if (args[0] === '/api/backtest/run' && args[1] && args[1].method === 'POST') {
+        const clone = response.clone();
+        clone.json().then(data => {
+            lastBacktestResults = data;
+            if (!data.error) {
+                const rBtn = document.getElementById('risk-btn');
+                if(rBtn) {
+                    rBtn.disabled = false;
+                    rBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }).catch(()=>{});
+    }
+    return response;
+}
+
+async function submitToRiskCommittee() {
+    const btn = document.getElementById('risk-btn');
+    if(!btn || btn.disabled) return;
+    btn.innerText = "COMMITTEE REVIEWING..."; btn.disabled = true;
+
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+    const payload = {
+        strategy_name: "Cross-Sectional Momentum (" + document.getElementById('bt-lookback').value + "d)",
+        observed_sr: lastBacktestResults && lastBacktestResults.metrics ? lastBacktestResults.metrics.sharpe : 1.0,
+        num_trials: 35,
+        universe: symbols
+    };
+
+    try {
+        const res = await fetch('/api/risk/gauntlet', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        const verdict = await res.json();
+
+        // Dynamically create the verdict box if it doesn't exist
+        let container = document.getElementById('risk-verdict-container');
+        if(!container) {
+            const resultsDiv = document.getElementById('results-container');
+            container = document.createElement('div');
+            container.id = 'risk-verdict-container';
+            container.className = 'mb-6';
+            resultsDiv.parentNode.insertBefore(container, resultsDiv);
+        }
+
+        let box = document.getElementById('risk-verdict-box');
+        if(!box) {
+            box = document.createElement('div');
+            box.id = 'risk-verdict-box';
+            box.className = 'p-6 rounded-lg border-2';
+            container.appendChild(box);
+        }
+
+        let html = '<h2 class="text-2xl font-bold mb-4">⚠️ Risk Committee Verdict</h2><ul class="space-y-2 mb-4">';
+        verdict.tests.forEach(t => {
+            const icon = t.status === 'PASS' ? '✅' : '❌';
+            const color = t.status === 'PASS' ? 'text-green-400' : 'text-red-400';
+            html += `<li class="${color}"><strong>${icon} ${t.name}:</strong> ${t.detail}</li>`;
+        });
+        html += '</ul>';
+
+        if (verdict.verdict === 'APPROVED') {
+            box.className = "p-6 rounded-lg border-2 border-green-500 bg-green-900/20";
+            html += '<p class="text-2xl font-bold text-green-400">✓ APPROVED FOR DEPLOYMENT</p><p class="text-sm text-gray-400">Cleared for Hive-Mind Autopilot integration.</p>';
+        } else {
+            box.className = "p-6 rounded-lg border-2 border-red-500 bg-red-900/20";
+            html += `<p class="text-2xl font-bold text-red-400">✘ REJECTED: CATASTROPHIC RISK</p><p class="text-sm text-gray-300 mt-2">Reason: ${verdict.rejection_reason}</p><p class="text-xs text-gray-500 mt-1">Do not deploy to live capital.</p>`;
+        }
+        box.innerHTML = html;
+        container.classList.remove('hidden');
+
+    } catch(e) { alert("Committee Error: " + e); }
+    finally {
+        btn.innerText = "SUBMIT TO RISK COMMITTEE";
+        btn.disabled = false;
+    }
+}
+
 </script>
 {% endblock %}

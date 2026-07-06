@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Alpha Decay Monitor - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-lime-400">Alpha Decay Monitor <span class="text-sm text-gray-500 font-normal">(Model Ops)</span></h1>
+        <p class="text-gray-400">Financial alpha decays as the market adapts. We monitor rolling metrics and auto-quarantine dying strategies.</p>
+    </div>
+    <span id="quarantine-badge" class="hidden px-4 py-2 rounded text-sm font-bold bg-red-900 text-red-300 animate-pulse">⚠️ AUTOPILOT QUARANTINE ACTIVE</span>
+</div>
+
+<div id="model-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <!-- Cards injected via JS -->
+</div>
+
+<div class="bg-gray-800 rounded-lg p-6 border border-lime-500/30">
+    <h2 class="text-xl font-bold mb-4 text-lime-400">Decay Trajectory (Rolling Metrics)</h2>
+    <div id="decay-chart" style="height: 400px;"></div>
+    <p class="text-xs text-gray-500 mt-2">Visualizing the natural entropy of financial alpha. As the Half-Life stretches (drifts upward) or Sharpe decays (drifts downward), the model approaches the Quarantine Threshold (Red Line).</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadHealth() {
+    try {
+        const data = await fetch('/api/mlops/health').then(r => r.json());
+        const grid = document.getElementById('model-grid');
+        grid.innerHTML = '';
+
+        let anyQuarantined = false;
+
+        data.models.forEach(m => {
+            if (m.quarantine) anyQuarantined = true;
+
+            const borderColor = m.color === 'green' ? 'border-green-500' : (m.color === 'yellow' ? 'border-yellow-500' : 'border-red-500');
+            const statusColor = m.color === 'green' ? 'text-green-400' : (m.color === 'yellow' ? 'text-yellow-400' : 'text-red-400');
+
+            let metric1Label = m.type === 'Cointegration' ? 'Rolling Half-Life' : 'Rolling Sharpe';
+            let metric1Val = m.type === 'Cointegration' ? `${m.half_life} days` : m.sharpe.toFixed(2);
+            let metric1Thresh = m.type === 'Cointegration' ? '(Threshold: < 10d)' : '(Threshold: > 1.0)';
+
+            grid.innerHTML += `
+                <div class="bg-gray-800 rounded-lg p-6 border-l-4 ${borderColor}">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-lg font-bold text-white">${m.name}</h3>
+                        <span class="px-2 py-1 rounded text-xs font-bold ${statusColor} bg-gray-900">${m.status}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 uppercase mb-4">${m.type}</p>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">${metric1Label}</span>
+                            <span class="font-mono font-bold text-white">${metric1Val}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 text-right">${metric1Thresh}</p>
+                        <div class="flex justify-between pt-2 border-t border-gray-700">
+                            <span class="text-gray-400 text-sm">P-Value</span>
+                            <span class="font-mono ${m.p_value < 0.05 ? 'text-green-400' : 'text-red-400'}">${m.p_value.toFixed(4)}</span>
+                        </div>
+                    </div>
+                    ${m.quarantine ? '<div class="mt-4 p-2 bg-red-900/50 rounded text-center text-xs text-red-300 font-bold">BLOCKED FROM AUTOPILOT</div>' : ''}
+                </div>
+            `;
+        });
+
+        const badge = document.getElementById('quarantine-badge');
+        if (anyQuarantined) badge.classList.remove('hidden');
+        else badge.classList.add('hidden');
+
+        // Plotly Decay Chart
+        const traces = [];
+        for (const [name, hist] of Object.entries(data.history)) {
+            if (hist.length > 0) {
+                const isCoint = name.includes('StatArb');
+                traces.push({
+                    x: hist.map(h => h.t),
+                    y: hist.map(h => isCoint ? h.hl : h.sr),
+                    mode: 'lines+markers',
+                    name: name + (isCoint ? ' (Half-Life)' : ' (Sharpe)'),
+                    line: { width: 2 }
+                });
+            }
+        }
+
+        // Add Threshold Lines
+        const shapes = [
+            { type: 'line', y0: 10, y1: 10, x0: 0, x1: 1, xref: 'paper', line: {color: 'red', width: 2, dash: 'dash'} },
+            { type: 'line', y0: 1.0, y1: 1.0, x0: 0, x1: 1, xref: 'paper', line: {color: 'orange', width: 2, dash: 'dash'} }
+        ];
+
+        Plotly.newPlot('decay-chart', traces, {
+            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+            xaxis: {title: 'Evaluation Cycle', gridcolor: '#374151'},
+            yaxis: {title: 'Metric Value', gridcolor: '#374151'},
+            margin: {t: 20, b: 40, l: 60, r: 20},
+            legend: {orientation: 'h', y: 1.1, x: 0.5},
+            shapes: shapes
+        }, {responsive: true});
+
+    } catch(e) { console.error(e); }
+}
+loadHealth();
+setInterval(loadHealth, 3000);
+</script>
+{% endblock %}
