@@ -1,14 +1,666 @@
 INFO:     Will watch for changes in these directories: ['/home/magi-00-wsl/workstation/home/work/financial_stack_engine']
 INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
-INFO:     Started reloader process [5098] using WatchFiles
-INFO:     Started server process [5270]
+INFO:     Started reloader process [14313] using WatchFiles
+INFO:     Started server process [14485]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'build_vol.py'. Reloading...
+INFO:     127.0.0.1:46924 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+INFO:     127.0.0.1:46936 - "GET /nexus HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "POST /api/nexus/ghost_execute HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /paper HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/paper/state HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46924 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+[LEDGER] FILLED: BUY 50 SNDK @ 45.05625
+INFO:     127.0.0.1:55630 - "POST /api/paper/order HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+INFO:     127.0.0.1:46924 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39330 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+INFO:     127.0.0.1:39330 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:39330 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 1y | interval: 1d
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/SNDK?period=5d&interval=1d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/paper/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:39330 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live SNDK | period: 5d | interval: 1d
+Fetching live MU | period: 1y | interval: 1d
+Fetching live SNDK | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 5d | interval: 1d
+INFO:     127.0.0.1:39330 - "GET /api/trend/SNDK?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/INTC?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 5d | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/paper/autopilot/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39330 - "GET /api/paper/state HTTP/1.1" 200 OK
+Fetching live MU | period: 5d | interval: 1d
+INFO:     127.0.0.1:39330 - "GET /nexus HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39330 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:55630 - "GET /api/trend/MU?period=5d&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46936 - "GET /api/trend/NVDA?period=5d&interval=1d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /backtest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "POST /api/backtest/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "POST /api/risk/gauntlet HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /time_machine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /api/time_machine/report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "POST /api/time_machine/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /api/time_machine/report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "POST /api/time_machine/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /api/time_machine/report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /nexus HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33900 - "GET /api/nexus/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49780 - "GET /api/nexus/ghost_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49780 - "GET /rl_lab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49780 - "GET /execution HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49780 - "GET /api/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49780 - "POST /api/execution/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57818 - "POST /api/execution/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57818 - "POST /api/execution/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36488 - "POST /api/execution/simulate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36488 - "GET /predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36488 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 1y | interval: 1d
+Fetching live BTC-USD | period: 1y | interval: 1d
+INFO:     127.0.0.1:36488 - "GET /api/predictions/BTC-USD?period=1y&interval=1d HTTP/1.1" 200 OK
+Fetching live ETH-USD | period: 1y | interval: 1d
+Fetching live ETH-USD | period: 1y | interval: 1d
+INFO:     127.0.0.1:36488 - "GET /api/predictions/ETH-USD?period=1y&interval=1d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36488 - "GET /trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36488 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 1y | interval: 1d
+INFO:     127.0.0.1:36488 - "GET /api/trend/BTC-USD?period=1y&interval=1d HTTP/1.1" 200 OK
+Fetching live ETH-USD | period: 1y | interval: 1d
+INFO:     127.0.0.1:34438 - "GET /api/trend/ETH-USD?period=1y&interval=1d HTTP/1.1" 200 OK
+Fetching live INTC | period: 1y | interval: 1d
+INFO:     127.0.0.1:34438 - "GET /api/trend/INTC?period=1y&interval=1d HTTP/1.1" 200 OK
+Fetching live MU | period: 1y | interval: 1d
+INFO:     127.0.0.1:34438 - "GET /api/trend/MU?period=1y&interval=1d HTTP/1.1" 200 OK
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:34438 - "GET /api/trend/NVDA?period=1y&interval=1d HTTP/1.1" 200 OK
+Fetching live SNDK | period: 1y | interval: 1d
+INFO:     127.0.0.1:34438 - "GET /api/trend/SNDK?period=1y&interval=1d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46726 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46726 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:46726 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:46726 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46726 - "GET /api/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59028 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:59028 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:59028 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59028 - "GET /api/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42588 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:42588 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:42588 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42588 - "GET /api/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48594 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:48594 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:48594 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48594 - "GET /api/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34496 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:34496 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:34496 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34496 - "GET /api/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55502 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:55502 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:55502 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55502 - "GET /api/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44358 - "GET /api/symbols HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1d
+Fetching live ETH-USD | period: 5d | interval: 1d
+Fetching live INTC | period: 5d | interval: 1d
+Fetching live MU | period: 5d | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1d
+Fetching live SNDK | period: 5d | interval: 1d
+INFO:     127.0.0.1:44358 - "GET /api/overview HTTP/1.1" 200 OK
+Fetching live BTC-USD | period: 5d | interval: 1h
+Fetching live ETH-USD | period: 5d | interval: 1h
+Fetching live INTC | period: 5d | interval: 1h
+Fetching live INTC | period: 1y | interval: 1d
+Fetching live MU | period: 5d | interval: 1h
+Fetching live MU | period: 1y | interval: 1d
+Fetching live NVDA | period: 5d | interval: 1h
+Fetching live NVDA | period: 1y | interval: 1d
+INFO:     127.0.0.1:44358 - "GET /api/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44358 - "GET /api/performance HTTP/1.1" 200 OK
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [5270]
-INFO:     Started server process [5661]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
+INFO:     Finished server process [14485]
+INFO:     Stopping reloader process [14313]

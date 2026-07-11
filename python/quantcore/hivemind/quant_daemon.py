@@ -106,6 +106,23 @@ def run_daemon():
                 print(f"[DAEMON] Best pair: {best_pair['pair']} | Z: {best_pair['current_z']:.2f}")
                 
                 # 1. Update StatArb Shared Memory
+                
+            # --- SATELLITE VETO CHECK ---
+            veto_trade = False
+            try:
+                import json as _json
+                if os.path.exists("data/satellite_feed.json"):
+                    with open("data/satellite_feed.json", "r") as _f:
+                        _feed = _json.load(_f)
+                        _news = [x for x in _feed[:10] if x.get("type") == "NEWS_SENTIMENT"]
+                        if _news:
+                            _avg_sent = sum(x["sentiment_score"] for x in _news) / len(_news)
+                            if best_pair['signal'] == 1 and _avg_sent < -0.5: veto_trade = True
+                            if best_pair['signal'] == -1 and _avg_sent > 0.5: veto_trade = True
+                            if veto_trade: print(f"[SATELLITE VETO] Blocked trade. Signal: {best_pair['signal']}, Sentiment: {_avg_sent:.2f}")
+            except: pass
+
+            if not veto_trade:
                 bridge.statarb_signal = best_pair['signal']
                 bridge.statarb_hedge_ratio = best_pair['beta']
                 bridge.statarb_spread_z = best_pair['current_z']

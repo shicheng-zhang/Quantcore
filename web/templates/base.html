@@ -108,7 +108,8 @@
                                 <a href="/sim_lab" class="block px-4 py-2 text-sm font-bold text-indigo-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/sim_lab' %}bg-gray-700{% endif %}">Level 4 Sim</a>
                                 <a href="/ops" class="block px-4 py-2 text-sm font-bold text-red-500 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/ops' %}bg-gray-700{% endif %}">Institutional Ops</a>
                                 <a href="/alt_data" class="block px-4 py-2 text-sm font-bold text-pink-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/alt_data' %}bg-gray-700{% endif %}">Satellite Lab</a>
-                                <a href="/time_machine" class="block px-4 py-2 text-sm font-bold text-violet-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/time_machine' %}bg-gray-700{% endif %}">Time Machine</a>
+                                <a href="/macro" class="block px-4 py-2 text-sm font-bold text-teal-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/macro' %}bg-gray-700{% endif %}">Macro Desk</a>
+<a href="/time_machine" class="block px-4 py-2 text-sm font-bold text-violet-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/time_machine' %}bg-gray-700{% endif %}">Time Machine</a>
                             </div>
                         </div>
                     </div>
@@ -313,6 +314,106 @@ function openEduDrawer(data) {
 function closeEduDrawer() {
     drawer.classList.remove('open');
     overlay.classList.remove('open');
+}
+</script>
+
+
+<!-- V1.0 Onboarding Modal -->
+<div id="qc-onboarding-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center p-8">
+    <div class="bg-gray-900 border border-blue-500/50 rounded-xl max-w-2xl w-full shadow-2xl overflow-hidden">
+        <div class="p-8">
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-3xl font-bold text-blue-400" id="ob-title">Welcome to QuantCore V1.0</h2>
+                <button onclick="closeOnboarding()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div id="ob-content" class="text-gray-300 space-y-4 min-h-[200px]">
+                <!-- Content injected via JS -->
+            </div>
+
+            <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-800">
+                <span class="text-sm text-gray-500" id="ob-step-indicator">Step 1 of 3</span>
+                <div class="flex gap-3">
+                    <button onclick="prevStep()" id="ob-prev" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-bold hidden">Back</button>
+                    <button onclick="nextStep()" id="ob-next" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-bold">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+const obSteps = [
+    {
+        title: "Welcome to QuantCore V1.0",
+        html: `<p class="text-lg">You are now operating a fully simulated, multi-strategy quantitative hedge fund.</p>
+               <p class="mt-4">This platform combines a <span class="text-red-400 font-bold">C++20 HFT Engine</span>, a <span class="text-blue-400 font-bold">Python Statistical Brain</span>, and an <span class="text-green-400 font-bold">Automated Risk Committee</span>.</p>
+               <p class="mt-4 text-sm text-gray-500">No real capital is ever at risk. This is a deep simulation environment designed for institutional-grade research and education.</p>`
+    },
+    {
+        title: "Navigating the Trading Desk",
+        html: `<p class="mb-4">The top navigation bar is grouped by institutional function:</p>
+               <ul class="space-y-3">
+                   <li><span class="text-white font-bold">Command Center:</span> Your main dashboard, paper trading desk, and live signals.</li>
+                   <li><span class="text-white font-bold">Alpha & Research:</span> Backtesting, StatArb, Volatility surfaces, and the Alpha Decay monitor.</li>
+                   <li><span class="text-white font-bold">Execution & HFT:</span> The Nexus C++ engine and Reinforcement Learning execution lab.</li>
+                   <li><span class="text-white font-bold">Infrastructure:</span> The Hive-Mind, Time Machine stress tests, and Macro Desk.</li>
+               </ul>`
+    },
+    {
+        title: "PRO vs LEARN Mode",
+        html: `<p class="mb-4">Use the toggle in the top right corner to switch your interface mode:</p>
+               <div class="grid grid-cols-2 gap-4">
+                   <div class="bg-gray-800 p-4 rounded border border-gray-700">
+                       <h3 class="text-blue-400 font-bold mb-2">PRO Mode</h3>
+                       <p class="text-sm text-gray-400">Clean, dense data visualization. Designed for active research and execution.</p>
+                   </div>
+                   <div class="bg-gray-800 p-4 rounded border border-blue-500/50">
+                       <h3 class="text-blue-400 font-bold mb-2">LEARN Mode</h3>
+                       <p class="text-sm text-gray-400">Highlights advanced concepts. Click any highlighted term to open the <span class="text-white font-bold">Mini-Wiki</span> and see the Day Trader vs Wall Street translation.</p>
+                   </div>
+               </div>
+               <p class="mt-6 text-center text-sm text-gray-500">You can always access the Wiki via the <span class="bg-blue-600 px-2 py-0.5 rounded text-white text-xs">📖 WIKI</span> button.</p>`
+    }
+];
+
+let currentStep = 0;
+
+function renderStep() {
+    document.getElementById('ob-title').innerText = obSteps[currentStep].title;
+    document.getElementById('ob-content').innerHTML = obSteps[currentStep].html;
+    document.getElementById('ob-step-indicator').innerText = `Step ${currentStep + 1} of ${obSteps.length}`;
+
+    document.getElementById('ob-prev').classList.toggle('hidden', currentStep === 0);
+    document.getElementById('ob-next').innerText = currentStep === obSteps.length - 1 ? 'Start Trading' : 'Next';
+}
+
+function nextStep() {
+    if (currentStep < obSteps.length - 1) {
+        currentStep++;
+        renderStep();
+    } else {
+        closeOnboarding();
+    }
+}
+
+function prevStep() {
+    if (currentStep > 0) {
+        currentStep--;
+        renderStep();
+    }
+}
+
+function closeOnboarding() {
+    document.getElementById('qc-onboarding-modal').classList.add('hidden');
+    localStorage.setItem('qc_toured_v1', 'true');
+}
+
+// Trigger on first boot
+if (!localStorage.getItem('qc_toured_v1')) {
+    document.getElementById('qc-onboarding-modal').classList.remove('hidden');
+    renderStep();
 }
 </script>
 

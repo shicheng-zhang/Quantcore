@@ -27,6 +27,7 @@
 
 #include <ixwebsocket/IXNetSystem.h>
 #include <ixwebsocket/IXWebSocket.h>
+#include <ixwebsocket/IXWebSocketServer.h>
 #include <nlohmann/json.hpp>
 
 using namespace nexus;

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Macro Desk - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-teal-400">The Macro Desk <span class="text-sm text-gray-500 font-normal">(Synthetic Yields & Regimes)</span></h1>
+    <span id="regime-badge" class="px-4 py-2 rounded text-sm font-bold bg-gray-700 text-gray-300">CALCULATING...</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-red-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">VIX (Volatility)</h3>
+        <p class="text-3xl font-bold text-red-400" id="kpi-vix">0.00</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-blue-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">US 10Y Yield</h3>
+        <p class="text-3xl font-bold text-blue-400" id="kpi-us10y">0.00%</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-green-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">DXY (Dollar Index)</h3>
+        <p class="text-3xl font-bold text-green-400" id="kpi-dxy">0.00</p>
+    </div>
+</div>
+<div class="bg-gray-800 rounded-lg p-6 border border-teal-500/30">
+    <h2 class="text-xl font-bold mb-4 text-teal-400">HRP Allocation Strategy</h2>
+    <p class="text-2xl font-bold text-white" id="kpi-rotation">-</p>
+    <p class="text-xs text-gray-500 mt-2">When the Macro Desk detects a hostile regime, it overrides the StatArb Autopilot and forces the Hive-Mind to rotate capital into defensive assets.</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadMacro() {
+    const m = await fetch('/api/macro/state').then(r => r.json());
+    document.getElementById('kpi-vix').innerText = m.vix;
+    document.getElementById('kpi-us10y').innerText = m.us10y + '%';
+    document.getElementById('kpi-dxy').innerText = m.dxy;
+    document.getElementById('kpi-rotation').innerText = m.rotation;
+
+    const badge = document.getElementById('regime-badge');
+    badge.innerText = m.regime;
+    const colors = {red: 'bg-red-900 text-red-300', yellow: 'bg-yellow-900 text-yellow-300', green: 'bg-green-900 text-green-300'};
+    badge.className = `px-4 py-2 rounded text-sm font-bold ${colors[m.color]} ${m.regime === 'RISK-OFF' ? 'animate-pulse' : ''}`;
+}
+loadMacro(); setInterval(loadMacro, 3000);
+</script>
+{% endblock %}

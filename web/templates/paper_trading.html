@@ -255,7 +255,7 @@ async function loadState() {
 setSide('BUY');
 loadPaperSymbols();
 loadState();
-setInterval(loadState, 5000); // Refresh every 5s
+setInterval(loadState, 1000); // Refresh every 5s
 
 async function toggleAutopilot() {
     const btn = document.getElementById('autopilot-btn');
@@ -283,7 +283,7 @@ async function checkAutopilotStatus() {
     }
 }
 checkAutopilotStatus();
-setInterval(checkAutopilotStatus, 5000);
+setInterval(checkAutopilotStatus, 1000);
 
 </script>
 {% endblock %}
