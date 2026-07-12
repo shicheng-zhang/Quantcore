@@ -21,6 +21,19 @@ public:
     }
 
     void append_event(uint64_t timestamp, const std::string& type, double val1, double val2) {
+    // Auto-rotate log if it exceeds 50MB to prevent disk/GitHub bloat
+        std::ifstream check_size(log_path_, std::ios::binary | std::ios::ate);
+        if (check_size.good()) {
+            std::streamsize sz = check_size.tellg();
+            check_size.close();
+            if (sz > 52428800) { // 50 MB
+                std::ofstream trunc(log_path_, std::ios::binary | std::ios::trunc);
+                trunc.close();
+                current_hash_ = 0x123456789ABCDEFULL;
+                prev_hash_ = 0x123456789ABCDEFULL;
+                seq_counter_ = 0;
+            }
+        }
         // Build hash chain
         uint64_t payload_hash = std::hash<std::string>{}(type) ^
                                static_cast<uint64_t>(val1 * 1e6) ^

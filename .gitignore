@@ -1,2 +1,8 @@
 .venv/
 build/
+
+# Runtime binary artifacts (Never track these)
+data/*.bin
+data/*.duckdb
+data/*.parquet
+data/*.log
