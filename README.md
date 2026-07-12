@@ -51,6 +51,8 @@ Some features are placeholders for future work.
 
 The current focus is on building a coherent architecture rather than optimizing every implementation.
 
+> **📖 [Read the Architecture & Vibe-Coding Manifesto](ARCHITECTURE.md)** to understand how this stack was built.
+
 ---
 
 # Repository Layout
