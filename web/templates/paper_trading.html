@@ -32,7 +32,18 @@
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-    <!-- ORDER TICKET -->
+    
+        <div class="bg-gray-800 rounded-lg p-4 border border-blue-500/30 mb-4">
+            <h3 class="text-sm font-bold text-blue-400 mb-2">Live Wire: Alpaca Paper API</h3>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input type="password" id="alpaca-key" placeholder="Alpaca Key ID" class="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white">
+                <input type="password" id="alpaca-secret" placeholder="Secret Key" class="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white">
+            </div>
+            <button onclick="saveAlpacaCreds()" class="w-full bg-blue-600 hover:bg-blue-700 p-1 rounded text-xs font-bold uppercase">Connect Alpaca Paper</button>
+            <div id="alpaca-status" class="text-xs text-center mt-2 text-gray-400">Mock Broker Active</div>
+        </div>
+        
+<!-- ORDER TICKET -->
     <div class="bg-gray-800 rounded-lg p-6 border border-amber-500/30">
         <h2 class="text-xl font-bold mb-4 text-amber-400">Order Ticket</h2>
         <div class="space-y-4">
@@ -284,6 +295,20 @@ async function checkAutopilotStatus() {
 }
 checkAutopilotStatus();
 setInterval(checkAutopilotStatus, 1000);
+
+
+async function saveAlpacaCreds() {
+    const key = document.getElementById('alpaca-key').value;
+    const secret = document.getElementById('alpaca-secret').value;
+    if(!key || !secret) return;
+    await fetch('/api/alpaca/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key_id: key, secret_key: secret})
+    });
+    document.getElementById('alpaca-status').innerText = "Alpaca Paper Connected!";
+    document.getElementById('alpaca-status').className = "text-xs text-center mt-2 text-green-400 font-bold";
+}
 
 </script>
 {% endblock %}

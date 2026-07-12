@@ -247,36 +247,40 @@ void telemetry_loop() {
 
         uint64_t total = events_processed.load();
 
-        std::ofstream out("data/nexus_live.json");
-        out << "{\n";
-        out << "  \"status\": \"LIVE\",\n";
-        out << "  \"symbol\": \"BTCUSDT\",\n";
-        out << "  \"events_processed\": " << total << ",\n";
-        out << "  \"last_price\": " << last_price.load() << ",\n";
-        out << "  \"latency_ns_mean\": " << mean << ",\n";
-        out << "  \"latency_ns_p99\": " << p99 << ",\n";
-        out << "  \"latency_ns_max\": " << max_lat << ",\n";
-        out << "  \"best_bid\": " << lob.get_best_bid() << ",\n";
-        out << "  \"best_ask\": " << lob.get_best_ask() << ",\n";
-        out << "  \"spread_bps\": " << lob.get_spread_bps() << ",\n";
-        out << "  \"ghost_active\": " << (ghost_lob.reality.is_active.load() ? "true" : "false") << ",\n";
-        out << "  \"ghost_target\": " << ghost_lob.reality.target_shares.load() << ",\n";
-        out << "  \"ghost_filled\": " << ghost_lob.reality.filled_shares.load() << ",\n";
-        out << "  \"ghost_theo\": " << ghost_lob.reality.theoretical_price.load() << ",\n";
-        out << "  \"ghost_actual\": " << ghost_lob.reality.actual_avg_price.load() << ",\n";
-        out << "  \"ghost_slippage_usd\": " << ghost_lob.reality.total_slippage_usd.load() << ",\n";
-        out << "  \"ghost_queue\": " << ghost_lob.reality.queue_ahead.load() << ",\n";
-        out << "  \"ghost_partial_fills\": " << ghost_lob.reality.partial_fills.load() << ",\n";
-        out << "  \"sim_fills\": " << sim_fills.load() << ",\n";
-        out << "  \"sim_pnl\": " << sim_pnl.load() << ",\n";
-        out << "  \"adverse_sel_rate\": " << micro_sim.metrics.adverse_selection_rate.load() << ",\n";
-        out << "  \"avg_temp_impact\": " << micro_sim.metrics.avg_temp_impact.load() << ",\n";
-        out << "  \"avg_perm_impact\": " << micro_sim.metrics.avg_perm_impact.load() << ",\n";
-        out << "  \"latency_jitter_ns\": " << micro_sim.metrics.latency_jitter_mean.load() << ",\n";
-        out << "  \"audit_chain_len\": " << audit_log.get_chain_length() << ",\n";
-        out << "  \"audit_last_hash\": \"" << audit_log.get_last_hash_hex() << "\"\n";
-        out << "}\n";
-        out.close();
+        json telemetry_json;
+    telemetry_json["status"] = "LIVE";
+    telemetry_json["symbol"] = "BTCUSDT";
+    telemetry_json["events_processed"] = total;
+    telemetry_json["last_price"] = last_price.load();
+    telemetry_json["latency_ns_mean"] = mean;
+    telemetry_json["latency_ns_p99"] = p99;
+    telemetry_json["latency_ns_max"] = max_lat;
+    telemetry_json["best_bid"] = lob.get_best_bid();
+    telemetry_json["best_ask"] = lob.get_best_ask();
+    telemetry_json["spread_bps"] = lob.get_spread_bps();
+    telemetry_json["ghost_active"] = ghost_lob.reality.is_active.load();
+    telemetry_json["ghost_target"] = ghost_lob.reality.target_shares.load();
+    telemetry_json["ghost_filled"] = ghost_lob.reality.filled_shares.load();
+    telemetry_json["ghost_theo"] = ghost_lob.reality.theoretical_price.load();
+    telemetry_json["ghost_actual"] = ghost_lob.reality.actual_avg_price.load();
+    telemetry_json["ghost_slippage_usd"] = ghost_lob.reality.total_slippage_usd.load();
+    telemetry_json["ghost_queue"] = ghost_lob.reality.queue_ahead.load();
+    telemetry_json["ghost_partial_fills"] = ghost_lob.reality.partial_fills.load();
+    telemetry_json["sim_fills"] = sim_fills.load();
+    telemetry_json["sim_pnl"] = sim_pnl.load();
+    telemetry_json["adverse_sel_rate"] = micro_sim.metrics.adverse_selection_rate.load();
+    telemetry_json["avg_temp_impact"] = micro_sim.metrics.avg_temp_impact.load();
+    telemetry_json["avg_perm_impact"] = micro_sim.metrics.avg_perm_impact.load();
+    telemetry_json["latency_jitter_ns"] = micro_sim.metrics.latency_jitter_mean.load();
+    telemetry_json["audit_chain_len"] = audit_log.get_chain_length();
+    telemetry_json["audit_last_hash"] = audit_log.get_last_hash_hex();
+    telemetry_json["lit_fills"] = ops.lit_venue_fills.load();
+    telemetry_json["dark_fills"] = ops.dark_pool_fills.load();
+    telemetry_json["dark_improvement"] = ops.dark_pool_improvement_bps.load();
+    
+    std::ofstream out("data/nexus_live.json");
+    out << telemetry_json.dump(4);
+    out.close();
     }
 }
 
@@ -349,6 +353,8 @@ void microstructure_generator_loop() {
         
         // AUDIT THE SYNTHETIC MARKET GENERATION (Continuous Ledger Chaining)
         audit_log.append_event(get_nanos(), "SYNTHETIC_TICK", mid_price, vol);
+        // Simulate institutional SOR routing for Ops dashboard
+        if (rand() % 5 == 0) ops.route_order(100 + (rand() % 900), mid_price);
         
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

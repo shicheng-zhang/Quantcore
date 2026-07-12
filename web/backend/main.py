@@ -522,3 +522,47 @@ macro_engine = MacroEngine()
 async def macro_desk(request: Request): return templates.TemplateResponse(request, "macro.html")
 @app.get("/api/macro/state")
 async def get_macro_state(): return macro_engine.get_regime()
+
+# --- ALPACA PAPER BROKER ---
+from python.quantcore.broker.alpaca_broker import AlpacaBroker
+alpaca_broker = AlpacaBroker()
+
+class AlpacaCreds(BaseModel):
+    key_id: str
+    secret_key: str
+
+@app.post("/api/alpaca/config")
+async def config_alpaca(creds: AlpacaCreds):
+    alpaca_broker.save_creds(creds.key_id, creds.secret_key)
+    return {"status": "SAVED"}
+
+@app.get("/api/alpaca/status")
+async def alpaca_status():
+    return {"configured": alpaca_broker.is_configured()}
+
+# --- ALPACA PAPER BROKER ---
+from python.quantcore.broker.alpaca_broker import AlpacaBroker
+alpaca_broker = AlpacaBroker()
+
+class AlpacaCreds(BaseModel):
+    key_id: str
+    secret_key: str
+    base_url: str = "https://paper-api.alpaca.markets"
+
+@app.post("/api/alpaca/config")
+async def config_alpaca(creds: AlpacaCreds):
+    alpaca_broker.save_creds(creds.key_id, creds.secret_key, creds.base_url)
+    return {"status": "SAVED"}
+
+@app.get("/api/alpaca/status")
+async def alpaca_status():
+    if not alpaca_broker.is_configured():
+        return {"configured": False}
+    acc = alpaca_broker.get_account()
+    if acc:
+        return {"configured": True, "equity": acc.get("equity"), "buying_power": acc.get("buying_power")}
+    return {"configured": True, "error": "Failed to fetch account"}
+
+@app.post("/api/alpaca/order")
+async def submit_alpaca_order(order: PaperOrder):
+    return alpaca_broker.submit_order(order.symbol, order.side, order.qty, order.algo)

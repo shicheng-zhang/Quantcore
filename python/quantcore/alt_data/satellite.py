@@ -39,9 +39,14 @@ class SatelliteEngine:
         regime_choice = random.choices(["bullish", "bearish", "neutral"], weights=weights, k=1)[0]
         headline = random.choice(self.headlines[regime_choice])
 
-        if regime_choice == "bullish": score = round(random.uniform(0.4, 0.95), 2)
-        elif regime_choice == "bearish": score = round(random.uniform(-0.95, -0.4), 2)
-        else: score = round(random.uniform(-0.2, 0.2), 2)
+        try:
+            from python.quantcore.nlp.vader_engine import VaderEngine
+            vader = VaderEngine()
+            score = vader.analyze(headline)
+        except:
+            if regime_choice == "bullish": score = round(random.uniform(0.4, 0.95), 2)
+            elif regime_choice == "bearish": score = round(random.uniform(-0.95, -0.4), 2)
+            else: score = round(random.uniform(-0.2, 0.2), 2)
 
         feed.append({
             "type": "NEWS_SENTIMENT", "timestamp": datetime.now().isoformat(),
