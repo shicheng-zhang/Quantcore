@@ -12,6 +12,8 @@ import itertools
 import json
 import warnings
 import pickle
+from python.quantcore.nlp.sentiment import SentimentEngine
+nlp_engine = SentimentEngine()
 warnings.filterwarnings('ignore')
 
 sys.stdout.reconfigure(line_buffering=True)
@@ -123,6 +125,15 @@ def run_daemon():
             except: pass
 
             if not veto_trade:
+                
+            # NLP VETO: Simulate checking a news feed
+            # In production, this would query a real news API
+            mock_news = "Market faces unexpected regulatory headwinds and macro uncertainty."
+            sentiment = nlp_engine.analyze(mock_news)['sentiment']
+            if sentiment < -0.5 and best_pair['signal'] == 1:
+                print(f"[NLP VETO] Blocked LONG trade due to negative sentiment ({sentiment:.2f})")
+                continue
+
                 bridge.statarb_signal = best_pair['signal']
                 bridge.statarb_hedge_ratio = best_pair['beta']
                 bridge.statarb_spread_z = best_pair['current_z']
