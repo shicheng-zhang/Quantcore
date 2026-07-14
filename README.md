@@ -142,3 +142,10 @@ Use at your own risk.
 # License
 
 GPLv3
+
+## ⚠️ Known Limitations (v1.0-beta)
+QuantCore is currently in Beta. While the architecture is sound and the core pipeline is tested, the following limitations apply:
+- **Broker Integration:** Alpaca integration is credential-only and tested against paper environments. Live trading requires additional safety guards.
+- **Data Sources:** `yfinance` is used for historical data. Rate limits may apply.
+- **Stub Modules:** `alt_data/` (NLP/Whale flow), `rl/` (RL execution), and `nlp/` modules are currently structural stubs that fail gracefully.
+- **Live Feeds:** The C++ Nexus engine uses synthetic microstructure data when disconnected from live Binance WebSocket feeds.
