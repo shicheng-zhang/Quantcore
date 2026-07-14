@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Day Trading Desk - QuantCore
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- INTRADAY BACKTESTER -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
+        <h2 class="text-xl font-bold mb-4 text-blue-400">Intraday Backtester (ORB)</h2>
+        <p class="text-xs text-gray-400 mb-4">Simulates an Opening Range Breakout strategy on recent 5m/15m data.</p>
+        <button onclick="runIntradayBacktest()" id="bt-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold text-sm mb-4">Backtest ORB</button>
+        <div id="bt-results" class="text-sm"></div>
+    </div>
+
+    <!-- SCALP EXECUTION TICKET -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-orange-500/30">
+        <h2 class="text-xl font-bold mb-4 text-orange-400">Quick Scalp Ticket</h2>
+        <p class="text-xs text-gray-400 mb-4">Execute rapid intraday scalps with VWAP routing. Tight risk management required.</p>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-400 mb-1">Scalp Size (Shares)</label>
+            <input type="number" id="scalp-qty" value="100" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <button onclick="executeScalp('BUY')" class="bg-green-700 hover:bg-green-600 p-3 rounded font-bold text-sm">SCALP LONG</button>
+            <button onclick="executeScalp('SELL')" class="bg-red-700 hover:bg-red-600 p-3 rounded font-bold text-sm">SCALP SHORT</button>
+        </div>
+        <div id="scalp-fb" class="text-xs text-center h-4"></div>
+    </div>
+</div>
+
+{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-orange-400">Day Trading Desk</h1>
+        <p class="text-gray-400">Intraday VWAP, Opening Range Breakouts (ORB), and RSI Signals.</p>
+    </div>
+    <div class="flex gap-4 items-center">
+        <select id="sym-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+            <option value="">Loading...</option>
+        </select>
+        <select id="interval-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+            <option value="1m">1 Min</option>
+            <option value="5m" selected>5 Min</option>
+            <option value="15m">15 Min</option>
+            <option value="1h">1 Hour</option>
+        </select>
+        <select id="period-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+            <option value="1d">1 Day</option>
+            <option value="2d">2 Days</option>
+            <option value="5d" selected>5 Days</option>
+        </select>
+        <button onclick="loadChart()" class="bg-orange-600 hover:bg-orange-700 px-6 py-2 rounded font-bold">Refresh</button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-blue-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Last Price</h3>
+        <p class="text-2xl font-bold text-white" id="kpi-price">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-purple-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">RSI (14)</h3>
+        <p class="text-2xl font-bold" id="kpi-rsi">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-green-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">ORB High</h3>
+        <p class="text-2xl font-bold text-green-400" id="kpi-orb-high">-</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-red-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">ORB Low</h3>
+        <p class="text-2xl font-bold text-red-400" id="kpi-orb-low">-</p>
+    </div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-4 mb-6">
+    <div id="chart" style="height: 500px;"></div>
+</div>
+
+<div class="bg-gray-800 rounded-lg p-4">
+    <h2 class="text-xl font-bold mb-4 text-orange-400">Intraday Signal Feed</h2>
+    <div id="signal-feed" class="space-y-2">
+        <p class="text-gray-500">No active intraday signals. (RSI is neutral, Price hasn't crossed VWAP or ORB levels)</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- INTRADAY BACKTESTER -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
+        <h2 class="text-xl font-bold mb-4 text-blue-400">Intraday Backtester (ORB)</h2>
+        <p class="text-xs text-gray-400 mb-4">Simulates an Opening Range Breakout strategy on recent 5m/15m data.</p>
+        <button onclick="runIntradayBacktest()" id="bt-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold text-sm mb-4">Backtest ORB</button>
+        <div id="bt-results" class="text-sm"></div>
+    </div>
+
+    <!-- SCALP EXECUTION TICKET -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-orange-500/30">
+        <h2 class="text-xl font-bold mb-4 text-orange-400">Quick Scalp Ticket</h2>
+        <p class="text-xs text-gray-400 mb-4">Execute rapid intraday scalps with VWAP routing. Tight risk management required.</p>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-400 mb-1">Scalp Size (Shares)</label>
+            <input type="number" id="scalp-qty" value="100" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <button onclick="executeScalp('BUY')" class="bg-green-700 hover:bg-green-600 p-3 rounded font-bold text-sm">SCALP LONG</button>
+            <button onclick="executeScalp('SELL')" class="bg-red-700 hover:bg-red-600 p-3 rounded font-bold text-sm">SCALP SHORT</button>
+        </div>
+        <div id="scalp-fb" class="text-xs text-center h-4"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadSymbols() {
+    const symbols = await fetch('/api/symbols').then(r => r.json());
+    const select = document.getElementById('sym-select');
+    select.innerHTML = '';
+    if (symbols.length === 0) {
+        select.innerHTML = '<option value="">No symbols added</option>';
+        return;
+    }
+    symbols.forEach(s => {
+        select.innerHTML += `<option value="${s}">${s}</option>`;
+    });
+    loadChart();
+}
+
+async function loadChart() {
+    const sym = document.getElementById('sym-select').value;
+    if(!sym) return;
+    const interval = document.getElementById('interval-select').value;
+    const period = document.getElementById('period-select').value;
+    
+    const data = await fetch(`/api/day_trading/analyze/${sym}?interval=${interval}&period=${period}`).then(r => r.json());
+    if (data.error) { alert(data.error); return; }
+
+    document.getElementById('kpi-price').textContent = `$${data.last_close.toFixed(2)}`;
+    const rsiEl = document.getElementById('kpi-rsi');
+    if(rsiEl) {
+        rsiEl.textContent = data.last_rsi.toFixed(1);
+        rsiEl.className = `text-2xl font-bold ${data.last_rsi > 70 ? 'text-red-400' : data.last_rsi < 30 ? 'text-green-400' : 'text-purple-400'}`;
+    }
+
+    // Format dates to ISO8601 for Plotly
+    const dates = data.dates.map(d => d.replace(' ', 'T'));
+    
+    const trace_candle = {
+        x: dates, open: data.open, high: data.high, low: data.low, close: data.close,
+        type: 'candlestick', name: sym,
+        increasing: {line: {color: '#10b981'}, fillcolor: '#10b981'},
+        decreasing: {line: {color: '#ef4444'}, fillcolor: '#ef4444'}
+    };
+    
+    const trace_vwap = {
+        x: dates, y: data.vwap, type: 'scatter', mode: 'lines',
+        name: 'VWAP', line: {color: '#eab308', width: 2, dash: 'dash'}
+    };
+
+    // Default zoom: Show only the last 20% of the data so it's not squished
+    let defaultRange = null;
+    if (dates.length > 60) {
+        const startIdx = Math.floor(dates.length * 0.8);
+        defaultRange = [dates[startIdx], dates[dates.length - 1]];
+    }
+
+    const layout = {
+        paper_bgcolor: '#1f2937',
+        plot_bgcolor: '#1f2937',
+        font: {color: '#e5e7eb'},
+        xaxis: {
+            type: 'date',
+            gridcolor: '#374151',
+            rangeslider: {visible: true, thickness: 0.05},
+            // MAGIC BULLET: Hide weekends and after-hours to prevent sideways compression
+            rangebreaks: [
+                { bounds: ['sat', 'mon'] }, 
+                { bounds: [16, 9.5], pattern: 'hour' } 
+            ],
+            rangeselector: {
+                buttons: [
+                    {count: 1, label: '1H', step: 'hour', stepmode: 'backward'},
+                    {count: 4, label: '4H', step: 'hour', stepmode: 'backward'},
+                    {count: 1, label: '1D', step: 'day', stepmode: 'backward'},
+                    {step: 'all', label: 'All'}
+                ],
+                bgcolor: '#1f2937',
+                activecolor: '#374151',
+                font: {color: '#e5e7eb'}
+            }
+        },
+        yaxis: {
+            gridcolor: '#374151', 
+            title: 'Price', 
+            side: 'right',
+            autorange: true
+        },
+        margin: {t: 30, b: 40, l: 20, r: 60},
+        hovermode: 'x unified'
+    };
+
+    if (defaultRange) {
+        layout.xaxis.range = defaultRange;
+    }
+
+    Plotly.newPlot('chart', [trace_candle, trace_vwap], layout, {responsive: true});
+}
+loadChart();
+loadSymbols();
+setInterval(loadChart, 15000);
+document.getElementById('sym-select').addEventListener('change', loadChart);
+
+async function runIntradayBacktest() {
+    const sym = document.getElementById('sym-select').value;
+    const interval = document.getElementById('interval-select').value;
+    const btn = document.getElementById('bt-btn');
+    if(!btn) return;
+    btn.innerText = "BACKTESTING ORB..."; btn.disabled = true;
+    
+    try {
+        const res = await fetch(`/api/intraday/backtest/${sym}?interval=${interval}`).then(r => r.json());
+        const outDiv = document.getElementById('bt-results');
+        if(!outDiv) return;
+        
+        if (res.error) {
+            outDiv.innerHTML = `<p class="text-red-400">${res.error}</p>`;
+        } else {
+            const color = res.net_pnl >= 0 ? 'text-green-400' : 'text-red-400';
+            outDiv.innerHTML = `
+                <div class="grid grid-cols-3 gap-4 mt-4 p-4 bg-gray-900 rounded border border-gray-700">
+                    <div><p class="text-xs text-gray-400">Trades</p><p class="text-xl font-bold">${res.total_trades}</p></div>
+                    <div><p class="text-xs text-gray-400">Win Rate</p><p class="text-xl font-bold">${res.win_rate}%</p></div>
+                    <div><p class="text-xs text-gray-400">Net P&L</p><p class="text-xl font-bold ${color}">$${res.net_pnl}</p></div>
+                </div>
+                <h4 class="text-sm font-bold text-gray-300 mt-4 mb-2">Recent Setups:</h4>
+                <ul class="text-xs text-gray-400 space-y-1">
+                    ${res.trades.map(t => `<li>${t.date} | ${t.direction} | Entry: $${t.entry.toFixed(2)} | P&L: <span class="${t.pnl > 0 ? 'text-green-400' : 'text-red-400'}">$${t.pnl.toFixed(2)}</span></li>`).join('')}
+                </ul>
+            `;
+        }
+    } catch(e) {
+        console.error(e);
+    } finally {
+        btn.innerText = "Backtest ORB"; btn.disabled = false;
+    }
+}
+
+async function executeScalp(side) {
+    const sym = document.getElementById('sym-select').value;
+    const qty = parseInt(document.getElementById('scalp-qty').value || 100);
+    const fb = document.getElementById('scalp-fb');
+    if(!fb) return;
+    
+    fb.innerHTML = `<span class="text-yellow-400">ROUTING SCALP...</span>`;
+    try {
+        const res = await fetch('/api/day_trading/scalp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({symbol: sym, side: side, qty: qty, algo: 'VWAP'})
+        }).then(r => r.json());
+        
+        if (res.status === 'FILLED') {
+            fb.innerHTML = `<span class="text-green-400">SCALP FILLED ${res.qty} @ $${res.fill_price}</span>`;
+        } else {
+            fb.innerHTML = `<span class="text-red-400">REJECTED: ${res.reason}</span>`;
+        }
+    } catch(e) {
+        fb.innerHTML = `<span class="text-red-400">NETWORK ERROR</span>`;
+    }
+}
+
+</script>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- INTRADAY BACKTESTER -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
+        <h2 class="text-xl font-bold mb-4 text-blue-400">Intraday Backtester (ORB)</h2>
+        <p class="text-xs text-gray-400 mb-4">Simulates an Opening Range Breakout strategy on recent 5m/15m data.</p>
+        <button onclick="runIntradayBacktest()" id="bt-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold text-sm mb-4">Backtest ORB</button>
+        <div id="bt-results" class="text-sm"></div>
+    </div>
+
+    <!-- SCALP EXECUTION TICKET -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-orange-500/30">
+        <h2 class="text-xl font-bold mb-4 text-orange-400">Quick Scalp Ticket</h2>
+        <p class="text-xs text-gray-400 mb-4">Execute rapid intraday scalps with VWAP routing. Tight risk management required.</p>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-400 mb-1">Scalp Size (Shares)</label>
+            <input type="number" id="scalp-qty" value="100" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <button onclick="executeScalp('BUY')" class="bg-green-700 hover:bg-green-600 p-3 rounded font-bold text-sm">SCALP LONG</button>
+            <button onclick="executeScalp('SELL')" class="bg-red-700 hover:bg-red-600 p-3 rounded font-bold text-sm">SCALP SHORT</button>
+        </div>
+        <div id="scalp-fb" class="text-xs text-center h-4"></div>
+    </div>
+</div>
+
+{% endblock %}

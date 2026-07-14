@@ -1,4 +1,5 @@
 import random
+import feedparser
 import time
 import json
 import os
@@ -30,6 +31,22 @@ class SatelliteEngine:
         }
         self.state_file = "data/satellite_feed.json"
 
+    
+import feedparser
+
+def fetch_live_news(self):
+    # Fetch real financial news from Yahoo Finance RSS
+    url = "https://finance.yahoo.com/news/rssindex"
+    feed = feedparser.parse(url)
+    headlines = []
+    for entry in feed.entries[:5]:
+        headlines.append({
+            "type": "NEWS_SENTIMENT",
+            "headline": entry.title,
+            "source": "Yahoo Finance"
+        })
+    return headlines
+
     def generate_feed(self, market_regime="neutral"):
         feed = []
         if market_regime == "bullish": weights = [0.6, 0.1, 0.3]
@@ -54,6 +71,23 @@ class SatelliteEngine:
             "confidence": round(random.uniform(0.75, 0.99), 2),
             "entities": random.sample(["BTC", "ETH", "Fed", "SEC", "Macro"], 2)
         })
+
+        
+        # Inject Real RSS News
+        try:
+            live_news = self.fetch_live_news()
+            for news in live_news:
+                score = self.analyze(news['headline']) if hasattr(self, 'analyze') else 0.0
+                feed.insert(0, {
+                    "type": "NEWS_SENTIMENT",
+                    "timestamp": datetime.now().isoformat(),
+                    "headline": news['headline'],
+                    "sentiment_score": round(score, 3),
+                    "confidence": 0.95,
+                    "entities": ["MACRO", "LIVE"]
+                })
+        except Exception as e:
+            print(f"[SATELLITE] RSS Error: {e}")
 
         whale_flow_btc = round(random.gauss(0, 500), 2)
         flow_signal = "SELL_PRESSURE" if whale_flow_btc > 200 else ("ACCUMULATION" if whale_flow_btc < -200 else "NEUTRAL")

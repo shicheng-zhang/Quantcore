@@ -4,7 +4,8 @@ import os
 import random
 
 class CIOAttributor:
-    def __init__(self):
+    def __init__(self, paper_broker=None):
+        self.paper_broker = paper_broker
         self.db_path = "data/paper_broker.duckdb"
 
     def get_metrics(self):
@@ -20,11 +21,11 @@ class CIOAttributor:
             "pnl_history": []
         }
 
-        if os.path.exists(self.db_path):
+        if self.paper_broker:
             try:
-                con = duckdb.connect(self.db_path, read_only=True)
-                cash = con.execute("SELECT cash FROM account").fetchone()[0]
-                initial = con.execute("SELECT initial_cash FROM account").fetchone()[0]
+                state = self.paper_broker.ledger.get_state()
+                cash = state['cash']
+                initial = state['initial_cash']
                 metrics["total_equity"] = cash
                 metrics["total_pnl"] = cash - initial
 
@@ -39,7 +40,7 @@ class CIOAttributor:
                     # Execution Alpha is the difference between retail dump and our actual execution.
                     metrics["execution_alpha_bps"] = max(0, 15.0 - avg_slip)
 
-                con.close()
+                # Using shared connection
             except Exception as e:
                 print(f"CIO DB Error: {e}")
 

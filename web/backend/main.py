@@ -387,7 +387,7 @@ async def train_rl():
 
 # --- CIO WAR ROOM (ROUTE 4) ---
 from python.quantcore.cio.attribution import CIOAttributor
-cio_attributor = CIOAttributor()
+cio_attributor = CIOAttributor(paper_broker=paper_broker)
 
 @app.get("/cio", response_class=HTMLResponse)
 async def cio_war_room(request: Request): return templates.TemplateResponse(request, "cio.html")
@@ -566,3 +566,31 @@ async def alpaca_status():
 @app.post("/api/alpaca/order")
 async def submit_alpaca_order(order: PaperOrder):
     return alpaca_broker.submit_order(order.symbol, order.side, order.qty, order.algo)
+
+# --- DAY TRADING DESK ---
+from python.quantcore.day_trading.intraday_engine import IntradayEngine
+day_trading_engine = IntradayEngine()
+
+@app.get("/day_trading", response_class=HTMLResponse)
+async def day_trading_page(request: Request):
+    return templates.TemplateResponse(request, "day_trading.html")
+
+@app.get("/api/day_trading/analyze/{symbol}")
+async def analyze_intraday(symbol: str, interval: str = "5m", period: str = "5d"):
+    return await asyncio.to_thread(day_trading_engine.analyze, symbol, interval, period)
+
+# --- INTRADAY BACKTESTER & SCALP EXECUTION ---
+from python.quantcore.research.intraday_backtester import IntradayBacktester
+intraday_bt = IntradayBacktester()
+
+@app.get("/api/intraday/backtest/{symbol}")
+async def run_intraday_backtest(symbol: str, interval: str = "5m"):
+    return await asyncio.to_thread(intraday_bt.run_orb, symbol, "5d", interval)
+
+@app.post("/api/day_trading/scalp")
+async def execute_scalp(order: PaperOrder):
+    # Scalp execution: tighter slippage assumption, immediate fill simulation
+    result = paper_broker.submit_order(order.symbol, order.side, order.qty, "VWAP")
+    if result.get("status") == "FILLED":
+        asyncio.create_task(broadcast_tape(result))
+    return result
