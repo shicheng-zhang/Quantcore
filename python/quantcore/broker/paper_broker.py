@@ -2,8 +2,8 @@ import numpy as np
 from .paper_ledger import PaperLedger
 
 class PaperBroker:
-    def __init__(self):
-        self.ledger = PaperLedger()
+    def __init__(self, db_path=None):
+        self.ledger = PaperLedger(db_path) if db_path else PaperLedger()
         # Deep Sim Mock Prices: Prevents yfinance network hangs and guarantees instant routing
         self.mock_prices = {
             "AAPL": 225.50, "MSFT": 420.10, "NVDA": 135.80, "TSLA": 245.00,
