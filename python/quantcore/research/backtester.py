@@ -77,7 +77,7 @@ class Backtester:
         # Outer join and forward fill missing days
         master = frames[0]
         for df in frames[1:]:
-            master = master.join(df, on="Date", how="outer_coalesce").sort("Date").fill_null(strategy="forward")
+            master = master.join(df, on="Date", how="outer_coalesce").sort("Date").fill_nan(None).fill_null(strategy="forward")
 
         # Drop rows with remaining nulls at the start
         master = master.drop_nulls()
@@ -93,7 +93,7 @@ class Backtester:
             return {"error": "Need at least 2 valid assets in universe to run cross-sectional backtest."}
 
         dates = master_df["Date"].to_list()
-        prices = master_df.select(pl.all().exclude("Date")).to_numpy()
+        prices = master_df.select(pl.all().exclude("Date")).fill_nan(None).fill_null(strategy="forward").to_numpy()
         n_days, n_assets = prices.shape
 
         # 1. Calculate Trailing Momentum Signal

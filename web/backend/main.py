@@ -594,3 +594,16 @@ async def execute_scalp(order: PaperOrder):
     if result.get("status") == "FILLED":
         asyncio.create_task(broadcast_tape(result))
     return result
+
+# --- TACTICAL INTRADAY SCANNER ---
+from python.quantcore.day_trading.intraday_signals import IntradaySignalEngine
+import time
+tactical_engine = IntradaySignalEngine()
+
+@app.get("/api/day_trading/alerts")
+async def get_tactical_alerts():
+    symbols = await asyncio.to_thread(analytics.get_symbols)
+    # Limit scan to first 15 symbols to prevent yfinance rate limits
+    universe = symbols[:15] 
+    alerts = await asyncio.to_thread(tactical_engine.scan_universe, universe)
+    return {"alerts": alerts, "timestamp": time.time(), "scanned": len(universe)}

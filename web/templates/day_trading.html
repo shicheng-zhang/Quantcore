@@ -1,36 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Day Trading Desk - QuantCore
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-    <!-- INTRADAY BACKTESTER -->
-    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
-        <h2 class="text-xl font-bold mb-4 text-blue-400">Intraday Backtester (ORB)</h2>
-        <p class="text-xs text-gray-400 mb-4">Simulates an Opening Range Breakout strategy on recent 5m/15m data.</p>
-        <button onclick="runIntradayBacktest()" id="bt-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold text-sm mb-4">Backtest ORB</button>
-        <div id="bt-results" class="text-sm"></div>
-    </div>
-
-    <!-- SCALP EXECUTION TICKET -->
-    <div class="bg-gray-800 rounded-lg p-6 border border-orange-500/30">
-        <h2 class="text-xl font-bold mb-4 text-orange-400">Quick Scalp Ticket</h2>
-        <p class="text-xs text-gray-400 mb-4">Execute rapid intraday scalps with VWAP routing. Tight risk management required.</p>
-        <div class="mb-4">
-            <label class="block text-xs text-gray-400 mb-1">Scalp Size (Shares)</label>
-            <input type="number" id="scalp-qty" value="100" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
-        </div>
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <button onclick="executeScalp('BUY')" class="bg-green-700 hover:bg-green-600 p-3 rounded font-bold text-sm">SCALP LONG</button>
-            <button onclick="executeScalp('SELL')" class="bg-red-700 hover:bg-red-600 p-3 rounded font-bold text-sm">SCALP SHORT</button>
-        </div>
-        <div id="scalp-fb" class="text-xs text-center h-4"></div>
-    </div>
-</div>
-
-{% endblock %}
+{% block title %}Day Trading Desk - QuantCore{% endblock %}
 {% block content %}
 <div class="flex justify-between items-center mb-6">
     <div>
         <h1 class="text-3xl font-bold text-orange-400">Day Trading Desk</h1>
-        <p class="text-gray-400">Intraday VWAP, Opening Range Breakouts (ORB), and RSI Signals.</p>
+        <p class="text-gray-400">Intraday VWAP, Opening Range Breakouts (ORB), Tactical Scanner, and RSI Signals.</p>
     </div>
     <div class="flex gap-4 items-center">
         <select id="sym-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
@@ -74,10 +48,31 @@
     <div id="chart" style="height: 500px;"></div>
 </div>
 
-<div class="bg-gray-800 rounded-lg p-4">
-    <h2 class="text-xl font-bold mb-4 text-orange-400">Intraday Signal Feed</h2>
-    <div id="signal-feed" class="space-y-2">
-        <p class="text-gray-500">No active intraday signals. (RSI is neutral, Price hasn't crossed VWAP or ORB levels)</p>
+<!-- TACTICAL SCANNER -->
+<div class="bg-gray-800 rounded-lg p-6 mt-6 border border-yellow-500/30 mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-yellow-400">⚡ Live Tactical Scanner (5m)</h2>
+        <span class="text-xs text-gray-500" id="scan-status">Waiting for scan...</span>
+    </div>
+    <p class="text-xs text-gray-400 mb-4">Scanning universe for Breakouts (Volume > 1.3x MA + RSI confirmation) and Mean-Reversion Fades.</p>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-900">
+                <tr>
+                    <th class="px-4 py-2">Symbol</th>
+                    <th class="px-4 py-2">Signal</th>
+                    <th class="px-4 py-2 text-right">Price</th>
+                    <th class="px-4 py-2 text-right">Breakout Lvl</th>
+                    <th class="px-4 py-2 text-right">RSI</th>
+                    <th class="px-4 py-2 text-right">ATR</th>
+                    <th class="px-4 py-2 text-right">Vol Ratio</th>
+                    <th class="px-4 py-2 text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody id="tactical-scanner" class="divide-y divide-gray-700">
+                <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Scanning...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -105,7 +100,6 @@
         <div id="scalp-fb" class="text-xs text-center h-4"></div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -133,14 +127,14 @@ async function loadChart() {
     const data = await fetch(`/api/day_trading/analyze/${sym}?interval=${interval}&period=${period}`).then(r => r.json());
     if (data.error) { alert(data.error); return; }
 
-    document.getElementById('kpi-price').textContent = `$${data.last_close.toFixed(2)}`;
+    document.getElementById('kpi-price').innerText = `$${data.last_close.toFixed(2)}`;
+    document.getElementById('kpi-orb-high').innerText = data.orb_high ? `$${data.orb_high.toFixed(2)}` : '-';
+    document.getElementById('kpi-orb-low').innerText = data.orb_low ? `$${data.orb_low.toFixed(2)}` : '-';
+    
     const rsiEl = document.getElementById('kpi-rsi');
-    if(rsiEl) {
-        rsiEl.textContent = data.last_rsi.toFixed(1);
-        rsiEl.className = `text-2xl font-bold ${data.last_rsi > 70 ? 'text-red-400' : data.last_rsi < 30 ? 'text-green-400' : 'text-purple-400'}`;
-    }
+    rsiEl.innerText = data.last_rsi.toFixed(1);
+    rsiEl.className = `text-2xl font-bold ${data.last_rsi > 70 ? 'text-red-400' : data.last_rsi < 30 ? 'text-green-400' : 'text-purple-400'}`;
 
-    // Format dates to ISO8601 for Plotly
     const dates = data.dates.map(d => d.replace(' ', 'T'));
     
     const trace_candle = {
@@ -155,7 +149,6 @@ async function loadChart() {
         name: 'VWAP', line: {color: '#eab308', width: 2, dash: 'dash'}
     };
 
-    // Default zoom: Show only the last 20% of the data so it's not squished
     let defaultRange = null;
     if (dates.length > 60) {
         const startIdx = Math.floor(dates.length * 0.8);
@@ -163,18 +156,10 @@ async function loadChart() {
     }
 
     const layout = {
-        paper_bgcolor: '#1f2937',
-        plot_bgcolor: '#1f2937',
-        font: {color: '#e5e7eb'},
+        paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
         xaxis: {
-            type: 'date',
-            gridcolor: '#374151',
-            rangeslider: {visible: true, thickness: 0.05},
-            // MAGIC BULLET: Hide weekends and after-hours to prevent sideways compression
-            rangebreaks: [
-                { bounds: ['sat', 'mon'] }, 
-                { bounds: [16, 9.5], pattern: 'hour' } 
-            ],
+            type: 'date', gridcolor: '#374151', rangeslider: {visible: true, thickness: 0.05},
+            rangebreaks: [{ bounds: ['sat', 'mon'] }, { bounds: [16, 9.5], pattern: 'hour' }],
             rangeselector: {
                 buttons: [
                     {count: 1, label: '1H', step: 'hour', stepmode: 'backward'},
@@ -182,31 +167,53 @@ async function loadChart() {
                     {count: 1, label: '1D', step: 'day', stepmode: 'backward'},
                     {step: 'all', label: 'All'}
                 ],
-                bgcolor: '#1f2937',
-                activecolor: '#374151',
-                font: {color: '#e5e7eb'}
+                bgcolor: '#1f2937', activecolor: '#374151', font: {color: '#e5e7eb'}
             }
         },
-        yaxis: {
-            gridcolor: '#374151', 
-            title: 'Price', 
-            side: 'right',
-            autorange: true
-        },
-        margin: {t: 30, b: 40, l: 20, r: 60},
-        hovermode: 'x unified'
+        yaxis: { gridcolor: '#374151', title: 'Price', side: 'right', autorange: true },
+        margin: {t: 30, b: 40, l: 20, r: 60}, hovermode: 'x unified',
+        shapes: [
+            {type: 'line', x0: dates[0], x1: dates[dates.length-1], y0: data.orb_high, y1: data.orb_high, line: {color: '#10b981', width: 2, dash: 'dash'}},
+            {type: 'line', x0: dates[0], x1: dates[dates.length-1], y0: data.orb_low, y1: data.orb_low, line: {color: '#ef4444', width: 2, dash: 'dash'}}
+        ]
     };
 
-    if (defaultRange) {
-        layout.xaxis.range = defaultRange;
-    }
+    if (defaultRange) layout.xaxis.range = defaultRange;
 
     Plotly.newPlot('chart', [trace_candle, trace_vwap], layout, {responsive: true});
 }
-loadChart();
-loadSymbols();
-setInterval(loadChart, 15000);
-document.getElementById('sym-select').addEventListener('change', loadChart);
+
+async function scanTactical() {
+    try {
+        const res = await fetch('/api/day_trading/alerts').then(r => r.json());
+        const tbody = document.getElementById('tactical-scanner');
+        const status = document.getElementById('scan-status');
+        status.innerText = `Scanned ${res.scanned} assets | ${new Date(res.timestamp * 1000).toLocaleTimeString()}`;
+        
+        if (!res.alerts || res.alerts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No active tactical setups.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        res.alerts.forEach(a => {
+            const colorClass = a.color === 'green' ? 'text-green-400' : (a.color === 'red' ? 'text-red-400' : 'text-yellow-400');
+            const btnClass = a.action === 'LONG' ? 'bg-green-700 hover:bg-green-600' : 'bg-red-700 hover:bg-red-600';
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-700">
+                    <td class="px-4 py-2 font-bold">${a.symbol}</td>
+                    <td class="px-4 py-2 ${colorClass} font-bold">${a.type}</td>
+                    <td class="px-4 py-2 text-right">$${a.price}</td>
+                    <td class="px-4 py-2 text-right text-gray-400">$${a.level}</td>
+                    <td class="px-4 py-2 text-right ${a.rsi > 70 ? 'text-red-400' : (a.rsi < 30 ? 'text-green-400' : 'text-white')}">${a.rsi}</td>
+                    <td class="px-4 py-2 text-right">${a.atr}</td>
+                    <td class="px-4 py-2 text-right ${a.vol_ratio > 1.5 ? 'text-yellow-400 font-bold' : ''}">${a.vol_ratio}x</td>
+                    <td class="px-4 py-2 text-center"><button class="${btnClass} px-2 py-1 rounded text-xs font-bold">SCALP ${a.action}</button></td>
+                </tr>
+            `;
+        });
+    } catch(e) { console.error(e); }
+}
 
 async function runIntradayBacktest() {
     const sym = document.getElementById('sym-select').value;
@@ -267,31 +274,9 @@ async function executeScalp(side) {
     }
 }
 
+document.getElementById('sym-select').addEventListener('change', loadChart);
+setInterval(scanTactical, 15000);
+loadSymbols();
+scanTactical();
 </script>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-    <!-- INTRADAY BACKTESTER -->
-    <div class="bg-gray-800 rounded-lg p-6 border border-blue-500/30">
-        <h2 class="text-xl font-bold mb-4 text-blue-400">Intraday Backtester (ORB)</h2>
-        <p class="text-xs text-gray-400 mb-4">Simulates an Opening Range Breakout strategy on recent 5m/15m data.</p>
-        <button onclick="runIntradayBacktest()" id="bt-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold text-sm mb-4">Backtest ORB</button>
-        <div id="bt-results" class="text-sm"></div>
-    </div>
-
-    <!-- SCALP EXECUTION TICKET -->
-    <div class="bg-gray-800 rounded-lg p-6 border border-orange-500/30">
-        <h2 class="text-xl font-bold mb-4 text-orange-400">Quick Scalp Ticket</h2>
-        <p class="text-xs text-gray-400 mb-4">Execute rapid intraday scalps with VWAP routing. Tight risk management required.</p>
-        <div class="mb-4">
-            <label class="block text-xs text-gray-400 mb-1">Scalp Size (Shares)</label>
-            <input type="number" id="scalp-qty" value="100" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
-        </div>
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <button onclick="executeScalp('BUY')" class="bg-green-700 hover:bg-green-600 p-3 rounded font-bold text-sm">SCALP LONG</button>
-            <button onclick="executeScalp('SELL')" class="bg-red-700 hover:bg-red-600 p-3 rounded font-bold text-sm">SCALP SHORT</button>
-        </div>
-        <div id="scalp-fb" class="text-xs text-center h-4"></div>
-    </div>
-</div>
-
 {% endblock %}
