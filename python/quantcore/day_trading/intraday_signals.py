@@ -26,8 +26,9 @@ class IntradaySignalEngine:
 
     def calculate_rsi(self, series, window=14):
         delta = series.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+        # Wilder's RSI: EMA with alpha=1/window (matches TradingView/Bloomberg)
+        gain = delta.where(delta > 0, 0).ewm(alpha=1/window, min_periods=window).mean()
+        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/window, min_periods=window).mean()
         rs = gain / loss
         return 100 - (100 / (1 + rs))
 
@@ -36,7 +37,10 @@ class IntradaySignalEngine:
         high_close = np.abs(df['High'] - df['Close'].shift())
         low_close = np.abs(df['Low'] - df['Close'].shift())
         ranges = pd.concat([high_low, high_close, low_close], axis=1)
-        true_range = np.max(ranges, axis=1)
+        # FIX: Use pandas .max() which skips NaN, not np.max() which propagates it.
+        # The first row has NaN in high_close/low_close due to .shift().
+        # np.max would make the first True Range NaN, cascading through the rolling mean.
+        true_range = ranges.max(axis=1)
         return true_range.rolling(window=window).mean().iloc[-1]
 
     def scan_universe(self, symbols):

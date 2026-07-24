@@ -25,7 +25,12 @@ class BlackScholes:
             theta -= r * K * np.exp(-r * T) * norm.cdf(d2)
         else:
             theta += r * K * np.exp(-r * T) * norm.cdf(-d2)
-        theta /= 365 # Daily theta
+        # CONVENTION: Divide by 365 (calendar days), NOT 252 (trading days).
+        # Options expire on calendar days (weekends/holidays count toward decay).
+        # This matches Bloomberg OVML, CBOE, and standard market convention.
+        # If you need trading-day theta (e.g., for P&L attribution on business days),
+        # multiply the result by (365/252) ≈ 1.448.
+        theta /= 365  # Per calendar day (standard options convention)
 
         return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta}
 

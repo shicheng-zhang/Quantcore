@@ -28,6 +28,9 @@ async def lifespan(app: FastAPI):
     global analytics, paper_broker
     analytics = AnalyticsEngine()
     paper_broker = PaperBroker()  # Safe from Uvicorn reloader lock
+    # Auto-reseed guard: checks data freshness in background thread
+    from python.quantcore.data.seed_guard import start_guard_async
+    start_guard_async()
     yield
 
 app = FastAPI(title="QuantCore Dashboard", lifespan=lifespan)
@@ -371,9 +374,13 @@ async def alt_data_lab(request: Request): return templates.TemplateResponse(requ
 
 @app.get("/api/alt_data/feed")
 async def get_alt_feed():
-    satellite_engine.generate_feed()
-    if not os.path.exists("data/satellite_feed.json"): return []
-    with open("data/satellite_feed.json", "r") as f: return json.load(f)
+    # Threaded: RSS fetches must never block the ASGI event loop.
+    try:
+        await asyncio.to_thread(satellite_engine.generate_feed)
+        if not os.path.exists("data/satellite_feed.json"): return []
+        with open("data/satellite_feed.json", "r") as f: return json.load(f)
+    except Exception:
+        return []
 
 @app.get("/rl_lab", response_class=HTMLResponse)
 async def rl_lab(request: Request): return templates.TemplateResponse(request, "rl_lab.html")
@@ -607,3 +614,23 @@ async def get_tactical_alerts():
     universe = symbols[:15] 
     alerts = await asyncio.to_thread(tactical_engine.scan_universe, universe)
     return {"alerts": alerts, "timestamp": time.time(), "scanned": len(universe)}
+
+# --- SEED GUARD (AUTO-RESEED) ---
+from python.quantcore.data.seed_guard import check_and_reseed as _force_reseed
+
+@app.post("/api/seed/force")
+async def force_reseed():
+    return await asyncio.to_thread(_force_reseed, True)
+
+@app.get("/api/seed/status")
+async def seed_status():
+    from python.quantcore.data.seed_guard import _load_meta, _parquet_max_age_days
+    meta = _load_meta()
+    return {
+        "boot_count": meta.get("boot_count", 0),
+        "last_seed": meta.get("last_seed", "never"),
+        "reseed_count": meta.get("reseed_count", 0),
+        "data_age_days": round(_parquet_max_age_days(), 1),
+        "max_age_days": 7,
+        "max_boots": 50
+    }

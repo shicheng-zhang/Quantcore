@@ -1,6 +1,7 @@
 import duckdb
 import os
 
+
 class PaperLedger:
     def __init__(self, db_path="data/paper_broker.duckdb"):
         os.makedirs("data", exist_ok=True)
@@ -20,7 +21,9 @@ class PaperLedger:
         try:
             cash = self.con.execute("SELECT cash FROM account").fetchone()[0]
             initial = self.con.execute("SELECT initial_cash FROM account").fetchone()[0]
-            positions = self.con.execute("SELECT symbol, qty, avg_cost FROM positions WHERE qty != 0").fetchall()
+            positions = self.con.execute(
+                "SELECT symbol, qty, avg_cost FROM positions WHERE qty != 0"
+            ).fetchall()
             return {"cash": cash, "initial_cash": initial, "positions": positions}
         except Exception as e:
             print(f"[LEDGER ERROR] get_state: {e}")
@@ -37,11 +40,20 @@ class PaperLedger:
             slip_cost = cost * (slip_bps / 10000.0)
 
             if side == "BUY":
-                self.con.execute(f"UPDATE account SET cash = cash - {cost + slip_cost + commission}")
+                self.con.execute(
+                    "UPDATE account SET cash = cash - ?",
+                    [cost + slip_cost + commission]
+                )
             else:
-                self.con.execute(f"UPDATE account SET cash = cash + {cost - slip_cost - commission}")
+                self.con.execute(
+                    "UPDATE account SET cash = cash + ?",
+                    [cost - slip_cost - commission]
+                )
 
-            pos = self.con.execute(f"SELECT qty, avg_cost FROM positions WHERE symbol = '{symbol}'").fetchone()
+            pos = self.con.execute(
+                "SELECT qty, avg_cost FROM positions WHERE symbol = ?",
+                [symbol]
+            ).fetchone()
             curr_qty, curr_avg = pos if pos else (0.0, 0.0)
 
             if side == "BUY":
@@ -51,21 +63,25 @@ class PaperLedger:
                 new_qty = curr_qty - qty
                 new_avg = curr_avg
 
-            self.con.execute(f"""
-                INSERT INTO positions (symbol, qty, avg_cost) VALUES ('{symbol}', {new_qty}, {new_avg})
-                ON CONFLICT (symbol) DO UPDATE SET qty = {new_qty}, avg_cost = {new_avg}
-            """)
+            self.con.execute("""
+                INSERT INTO positions (symbol, qty, avg_cost) VALUES (?, ?, ?)
+                ON CONFLICT (symbol) DO UPDATE SET qty = ?, avg_cost = ?
+            """, [symbol, new_qty, new_avg, new_qty, new_avg])
 
-            self.con.execute(f"""
+            self.con.execute("""
                 INSERT INTO trades (ts, symbol, side, qty, price, slippage_bps, commission)
-                VALUES (current_timestamp, '{symbol}', '{side}', {qty}, {price}, {slip_bps}, {commission})
-            """)
+                VALUES (current_timestamp, ?, ?, ?, ?, ?, ?)
+            """, [symbol, side, qty, price, slip_bps, commission])
+
             print(f"[LEDGER] FILLED: {side} {qty} {symbol} @ {price}")
         except Exception as e:
             print(f"[LEDGER ERROR] execute_fill: {e}")
 
     def get_recent_trades(self, limit=20):
         try:
-            return self.con.execute(f"SELECT * FROM trades ORDER BY ts DESC LIMIT {limit}").fetchall()
+            return self.con.execute(
+                "SELECT * FROM trades ORDER BY ts DESC LIMIT ?",
+                [limit]
+            ).fetchall()
         except:
             return []

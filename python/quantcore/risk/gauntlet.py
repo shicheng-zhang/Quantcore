@@ -16,9 +16,16 @@ class RiskCommittee:
             "rejection_reason": None
         }
 
+        # TEST 0: Minimum viability check (prevent garbage submissions)
+        if observed_sr < 0.3:
+            results["verdict"] = "REJECTED"
+            results["rejection_reason"] = f"Sharpe {observed_sr:.2f} below minimum viable threshold (0.30)"
+            results["tests"].append({"name": "Minimum Sharpe Floor", "status": "FAIL", "detail": f"Sharpe {observed_sr:.2f} < 0.30 minimum"})
+            return results
+
         # TEST 1: The Overfit Check (Statistical Significance)
         dsr = ResearchValidator.deflated_sharpe_ratio(observed_sr, num_trials)
-        test1 = {"name": "Deflated Sharpe Ratio (Overfit Check)", "status": "PASS", "detail": f"Prob Real: {dsr['dsr_probability']*100:.1f}%"}
+        test1 = {"name": "Deflated Sharpe Ratio (Overfit Check)", "status": "PASS", "detail": f"Prob Real: {dsr['dsr_probability']*100:.1f}% | Threshold SR: {dsr['expected_max_sr_noise']:.2f} (from {num_trials} trials)"}
         if not dsr["is_significant"]:
             test1["status"] = "FAIL"
             test1["detail"] = "Alpha is statistically indistinguishable from random noise."

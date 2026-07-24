@@ -18,6 +18,7 @@ struct ExecutionReality {
     std::atomic<int> queue_ahead{0};
     std::atomic<int> partial_fills{0};
     std::atomic<double> current_market_price{0.0};
+std::atomic<double> avg_daily_volume{50000.0}; // FIX #13: Almgren-Chriss participation denominator
 };
 
 class GhostExchange {
@@ -57,7 +58,9 @@ public:
             // Slippage = eta * sigma * sqrt(Qty / Volume) * sign
             // We simulate a hostile eta (market impact coefficient)
             double eta = 0.15;
-            double slip_bps = eta * volatility * std::sqrt(static_cast<double>(current_child) / 10000.0) * 10000.0;
+            // FIX #13: Use actual average daily volume for participation rate (Q/V)
+            double avg_vol = reality.avg_daily_volume.load();
+            double slip_bps = eta * volatility * std::sqrt(static_cast<double>(current_child) / avg_vol) * 10000.0;
             double slip_price = base_price * (slip_bps / 10000.0);
 
             // Add stochastic noise (the market is moving against you while you wait in queue)

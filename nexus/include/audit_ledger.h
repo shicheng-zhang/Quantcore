@@ -8,8 +8,23 @@
 
 namespace nexus {
 
-// Fast rolling cryptographic hash for simulation integrity
-// In production, this would be SHA-256 via OpenSSL. For sim speed, we use a robust polynomial hash.
+// SIMULATION-GRADE polynomial rolling hash chain (NOT cryptographic).
+// This is a FNV-1a style mix: hash = hash * prime + payload.
+// It provides ORDER VERIFICATION (detects reordering/deletion) but is
+// trivially forgeable in O(n) time by recomputing subsequent hashes.
+//
+// PRODUCTION REQUIREMENT: Replace with SHA-256 via OpenSSL (EVP_DigestUpdate)
+// to achieve true tamper-evidence where modifying any entry invalidates
+// all subsequent hashes computationally (2^256 preimage resistance).
+//
+// The current implementation is sufficient for:
+//   - Detecting accidental corruption (bit flips, truncation)
+//   - Verifying event ordering (sequence integrity)
+//   - Post-mortem state reconstruction
+// It is NOT sufficient for:
+//   - Adversarial tamper detection
+//   - Regulatory audit compliance (SEC/FINRA)
+//   - Legal evidence of execution
 class MerkleLedger {
 public:
     MerkleLedger(const std::string& path) : log_path_(path), current_hash_(0x123456789ABCDEFULL) {

@@ -88,10 +88,9 @@ void engine_loop() {
             
             // --- HIVE-MIND IPC READER ---
             if (hive_bridge) {
-                uint64_t seq = *(volatile uint64_t*)&hive_bridge->sequence;
                 static uint64_t last_seq = 0;
-                if (seq != last_seq) {
-                    last_seq = seq;
+uint64_t seq1 = *(volatile uint64_t*)&hive_bridge->sequence;
+if (seq1 != last_seq) {
                     uint32_t n = hive_bridge->num_assets;
                     double vol = hive_bridge->regime_vol;
                     if (vol == 0.0) vol = 0.05; // Fallback
@@ -143,7 +142,9 @@ void engine_loop() {
                                 if (shares > 10) {
                                     // Ghost Exchange Slippage Physics
                                     double eta = 0.15;
-                                    double slip_bps = eta * vol * std::sqrt(static_cast<double>(shares) / 10000.0) * 10000.0;
+                                    // FIX #13: Use configurable volume denominator (default 50k shares)
+                double avg_vol = 50000.0; // TODO: Read from instrument config
+                double slip_bps = eta * vol * std::sqrt(static_cast<double>(shares) / avg_vol) * 10000.0;
                                     double slip_price = price * (slip_bps / 10000.0);
                                     double fill_price = price + (delta_w > 0 ? slip_price : -slip_price);
 

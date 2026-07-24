@@ -164,7 +164,7 @@ async function submitToRiskCommittee() {
     const payload = {
         strategy_name: "Cross-Sectional Momentum (" + document.getElementById('bt-lookback').value + "d)",
         observed_sr: lastBacktestResults && lastBacktestResults.metrics ? lastBacktestResults.metrics.sharpe : 1.0,
-        num_trials: 35,
+        num_trials: parseInt(document.getElementById('bt-trials')?.value || '1'),
         universe: symbols
     };
 

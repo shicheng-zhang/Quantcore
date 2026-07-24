@@ -47,7 +47,16 @@ class HRPOptimizer:
             sort_idx = pd.concat([sort_idx, df0])
             sort_idx = sort_idx.sort_index()
             
-        return sort_idx.tolist()
+        result = sort_idx.tolist()
+
+        # SAFETY GUARD: Verify output integrity
+        # The result must contain exactly n_items unique indices in [0, n_items)
+        if len(result) != n_items or len(set(result)) != n_items or any(x < 0 or x >= n_items for x in result):
+            # Fallback: simple sequential ordering (always valid, just suboptimal)
+            print(f"[HRP WARNING] Quasi-diag produced invalid output ({len(result)} items, {len(set(result))} unique). Falling back to sequential order.")
+            result = list(range(n_items))
+
+        return result
 
     @staticmethod
     def _get_recursive_bisection(cov: np.ndarray, items: List[int]) -> pd.Series:

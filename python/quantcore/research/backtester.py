@@ -130,7 +130,12 @@ class Backtester:
         turnover[1:] = np.sum(np.abs(weights[1:] - weights[:-1]), axis=1) / 2
 
         # 5. Calculate Strategy Returns
-        strat_ret = np.nansum(weights * daily_ret, axis=1)
+        # FIX: Eliminate look-ahead bias.
+        # weights[i] is decided using prices up to day i (observed at close of day i).
+        # In reality, you can only ACT on that signal starting day i+1.
+        # Therefore: yesterday's weights earn today's return.
+        strat_ret = np.zeros(n_days)
+        strat_ret[1:] = np.nansum(weights[:-1] * daily_ret[1:], axis=1)
         strat_ret = np.nan_to_num(strat_ret, nan=0.0)
 
         # 6. Apply Transaction Costs (Slippage)
@@ -148,8 +153,12 @@ class Backtester:
         ann_factor = 252 / n_days
         cagr = (1 + total_return) ** ann_factor - 1
 
-        vol = np.std(net_ret) * np.sqrt(252)
-        sharpe = (cagr / vol) if vol > 0 else 0
+        # Sharpe Ratio: (mean daily return / std daily return) * sqrt(252)
+        # Using arithmetic mean, NOT CAGR, to match the standard definition.
+        # CAGR is geometric; mixing it with arithmetic vol inflates the metric.
+        mean_daily_ret = np.mean(net_ret[lookback:])
+        std_daily_ret = np.std(net_ret[lookback:])
+        sharpe = (mean_daily_ret / std_daily_ret) * np.sqrt(252) if std_daily_ret > 0 else 0
 
         max_dd = np.min(drawdown)
 

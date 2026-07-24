@@ -207,7 +207,7 @@ const EDU_TERMS = {
         title: "Sharpe Ratio (Risk-Adjusted Return)",
         retail: "A way to tell if a trader is actually good, or just taking insane risks. If Trader A makes 20% a year by holding crypto through 50% drawdowns, and Trader B makes 15% a year with barely any drawdowns, Trader B has a much higher Sharpe Ratio. It measures return per unit of pain.",
         wallstreet: "The holy grail metric for hedge fund allocation. A Sharpe > 2.0 is excellent. > 3.0 is institutional grade. Funds use it to determine how much leverage to apply. A high Sharpe strategy can be levered 5x to yield massive returns with acceptable volatility.",
-        software: "Calculated as (CAGR / Annualized Volatility) using daily returns from the Polars backtester. We assume a risk-free rate of 0% for the simulation.",
+        software: "Calculated as (mean_daily_return / std_daily_return) * sqrt(252) using arithmetic returns from the Polars backtester. We assume a risk-free rate of 0% for the simulation.",
         pnl: "Chasing high absolute returns with a low Sharpe ratio guarantees you will eventually hit a drawdown so deep you either blow up your account or panic-sell at the absolute bottom."
     },
     max_drawdown: {

@@ -20,8 +20,18 @@ class ResearchValidator:
         resulting from multiple testing (Backtest Overfitting).
         """
         # Expected maximum Sharpe Ratio from num_trials of random noise
-        # Using Euler-Mascheroni constant approximation for max of normal distribution
-        expected_max_sr = np.sqrt(2 * np.log(num_trials))
+        # Using the full Euler-Mascheroni approximation for E[max] of N i.i.d. normals:
+        # E[max] ≈ sqrt(2*ln(N)) - (ln(pi) + ln(ln(N)) + 2*gamma) / (2*sqrt(2*ln(N)))
+        # The old formula (just sqrt(2*ln(N))) OVERESTIMATES the expected max,
+        # making the DSR test too conservative (rejects valid strategies).
+        euler_mascheroni = 0.5772156649015329
+        log_n = np.log(num_trials)
+        if num_trials <= 1:
+            expected_max_sr = 0.0
+        else:
+            leading = np.sqrt(2 * log_n)
+            correction = (np.log(np.pi) + np.log(log_n) + 2 * euler_mascheroni) / (2 * leading)
+            expected_max_sr = leading - correction
 
         # Variance of the Sharpe Ratio estimator
         sr_var = (1 - skewness * observed_sr + ((kurtosis - 1) / 4) * observed_sr**2) / annualization_factor

@@ -86,12 +86,19 @@ class IntradayEngine:
         df = self.get_intraday_data(symbol, interval, period)
         if df is None or len(df) < 10: return {"error": "No data"}
 
+        # VWAP must reset at the start of each trading session (daily reset).
+        # A 5-day cumulative VWAP is meaningless to day traders.
         tp = (df['High'] + df['Low'] + df['Close']) / 3
-        df['VWAP'] = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
+        df['_tp_vol'] = tp * df['Volume']
+        df['_date'] = pd.to_datetime(df['Date']).dt.date
+        df['VWAP'] = df.groupby('_date')['_tp_vol'].cumsum() / df.groupby('_date')['Volume'].cumsum()
+        df.drop(columns=['_tp_vol', '_date'], inplace=True)
 
         delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        # Wilder's RSI: uses EMA with alpha=1/period (not SMA)
+        # This matches TradingView, Bloomberg, and the original 1978 definition
+        gain = delta.where(delta > 0, 0).ewm(alpha=1/14, min_periods=14).mean()
+        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, min_periods=14).mean()
         rs = gain / loss
         df['RSI'] = 100 - (100 / (1 + rs))
 

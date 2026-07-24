@@ -29,7 +29,7 @@ class CIOAttributor:
                 metrics["total_equity"] = cash
                 metrics["total_pnl"] = cash - initial
 
-                trades = con.execute("SELECT COUNT(*), SUM(slippage_bps) FROM trades").fetchone()
+                trades = self.paper_broker.ledger.con.execute("SELECT COUNT(*), SUM(slippage_bps) FROM trades").fetchone()
                 metrics["trades_executed"] = trades[0] or 0
                 total_slip = trades[1] or 0.0
                 metrics["slippage_cost_bps"] = total_slip
@@ -40,7 +40,6 @@ class CIOAttributor:
                     # Execution Alpha is the difference between retail dump and our actual execution.
                     metrics["execution_alpha_bps"] = max(0, 15.0 - avg_slip)
 
-                # Using shared connection
             except Exception as e:
                 print(f"CIO DB Error: {e}")
 

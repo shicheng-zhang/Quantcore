@@ -31,6 +31,39 @@ class HiveMindState(ctypes.Structure):
         ("realized_pnl", ctypes.c_double), ("orders_sent", ctypes.c_uint32), ("orders_filled", ctypes.c_uint32),
     ]
 
+
+# ============================================================
+# STRUCT_VERIFICATION: Runtime guard against C++/Python drift
+# ============================================================
+_EXPECTED_STRUCT_SIZE = 597
+_actual_size = ctypes.sizeof(HiveMindState)
+assert _actual_size == _EXPECTED_STRUCT_SIZE, (
+    f"FATAL: HiveMindState size mismatch! "
+    f"Python says {_actual_size} bytes, C++ expects {_EXPECTED_STRUCT_SIZE} bytes. "
+    f"Update nexus/include/shared_bridge.h to match."
+)
+
+# Verify critical field offsets (catches reordering bugs)
+assert HiveMindState.sequence.offset == 0, "sequence offset wrong"
+assert HiveMindState.py_timestamp.offset == 8, "py_timestamp offset wrong"
+assert HiveMindState.num_assets.offset == 16, "num_assets offset wrong"
+assert HiveMindState.symbols.offset == 20, "symbols offset wrong"
+assert HiveMindState.target_weights.offset == 340, "target_weights offset wrong"
+assert HiveMindState.regime_vol.offset == 500, "regime_vol offset wrong"
+assert HiveMindState.statarb_signal.offset == 508, "statarb_signal offset wrong"
+assert HiveMindState.statarb_hedge_ratio.offset == 509, "statarb_hedge_ratio offset wrong"
+assert HiveMindState.statarb_spread_z.offset == 517, "statarb_spread_z offset wrong"
+assert HiveMindState.statarb_pair_s1.offset == 525, "statarb_pair_s1 offset wrong"
+assert HiveMindState.statarb_pair_s2.offset == 541, "statarb_pair_s2 offset wrong"
+assert HiveMindState.cpp_timestamp.offset == 557, "cpp_timestamp offset wrong"
+assert HiveMindState.portfolio_value.offset == 565, "portfolio_value offset wrong"
+assert HiveMindState.total_slippage.offset == 573, "total_slippage offset wrong"
+assert HiveMindState.realized_pnl.offset == 581, "realized_pnl offset wrong"
+assert HiveMindState.orders_sent.offset == 589, "orders_sent offset wrong"
+assert HiveMindState.orders_filled.offset == 593, "orders_filled offset wrong"
+print(f"[DAEMON] Struct verification PASSED ({_actual_size} bytes, 17 fields aligned)")
+# ============================================================
+
 UNIVERSE = ["SPY", "IVV", "GLD", "IAU", "BTC-USD", "ETH-USD"]
 CACHE_DIR = "data_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
