@@ -43,6 +43,7 @@ std::atomic<double> sim_pnl{0.0};
 InstitutionalOps ops;
 
 GhostExchange ghost_lob;
+std::thread ghost_sim_thread;  // FIX #2: Track ghost thread to prevent use-after-free on shutdown
 
 // --- HIVE-MIND SHARED MEMORY BRIDGE ---
 HiveMindState* hive_bridge = nullptr;
@@ -325,8 +326,12 @@ void ghost_stress_test_loop() {
 
 void trigger_ghost_execution(uint64_t shares, double price, double vol) {
     if (!ghost_lob.reality.is_active.load()) {
-        std::thread sim(&GhostExchange::simulate_execution, &ghost_lob, shares, price, vol);
-        sim.detach();
+        // FIX #2: Join previous ghost thread before spawning a new one.
+        // Prevents use-after-free if the old thread is still running.
+        if (ghost_sim_thread.joinable()) {
+            ghost_sim_thread.join();
+        }
+        ghost_sim_thread = std::thread(&GhostExchange::simulate_execution, &ghost_lob, shares, price, vol);
     }
 }
 
