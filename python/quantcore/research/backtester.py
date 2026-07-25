@@ -72,7 +72,8 @@ class Backtester:
                         valid_symbols.append(sym)
                 except: pass
 
-        if not frames: return None, []
+        if not frames:
+            raise ValueError(f"Could not load any symbols from universe. Check tickers and data availability.")
 
         # Outer join and forward fill missing days
         master = frames[0]
@@ -88,7 +89,10 @@ class Backtester:
         Classic Wall Street Factor: Cross-Sectional Momentum.
         Ranks assets by trailing return. Longs top quartile, Shorts bottom quartile.
         """
-        master_df, valid_symbols = self._load_universe_data(universe)
+        try:
+            master_df, valid_symbols = self._load_universe_data(universe)
+        except ValueError as e:
+            return {"error": str(e)}
         if master_df is None or len(valid_symbols) < 2:
             return {"error": "Need at least 2 valid assets in universe to run cross-sectional backtest."}
 
@@ -150,8 +154,13 @@ class Backtester:
 
         # 8. Calculate Metrics
         total_return = (equity[-1] / equity[0]) - 1
-        ann_factor = 252 / n_days
-        cagr = (1 + total_return) ** ann_factor - 1
+        # FIX #8: Only annualize if we have >= 30 days of data.
+        # Annualizing a 5-day backtest produces absurd CAGR values (e.g., 1% over 5 days → 65% CAGR).
+        if n_days >= 30:
+            ann_factor = 252 / n_days
+            cagr = (1 + total_return) ** ann_factor - 1
+        else:
+            cagr = total_return  # Report raw return for short windows
 
         # Sharpe Ratio: (mean daily return / std daily return) * sqrt(252)
         # Using arithmetic mean, NOT CAGR, to match the standard definition.

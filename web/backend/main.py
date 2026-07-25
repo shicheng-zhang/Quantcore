@@ -159,8 +159,9 @@ async def paper_trading_desk(request: Request):
 
 @app.get("/api/paper/state")
 async def get_paper_state():
-    state = paper_broker.ledger.get_state()
-    trades = paper_broker.ledger.get_recent_trades()
+    # FIX #7: Run DB reads in thread pool to avoid blocking ASGI event loop
+    state = await asyncio.to_thread(paper_broker.ledger.get_state)
+    trades = await asyncio.to_thread(paper_broker.ledger.get_recent_trades)
     return {"state": state, "trades": trades}
 
 class PaperOrder(BaseModel):
@@ -171,14 +172,16 @@ class PaperOrder(BaseModel):
 
 @app.post("/api/paper/order")
 async def submit_paper_order(order: PaperOrder):
-    result = paper_broker.submit_order(order.symbol, order.side, order.qty, order.algo)
+    # FIX #7: Run DB write in thread pool to avoid blocking ASGI event loop
+    result = await asyncio.to_thread(paper_broker.submit_order, order.symbol, order.side, order.qty, order.algo)
     if result.get("status") == "FILLED":
         asyncio.create_task(broadcast_tape(result))
     return result
 
 @app.post("/api/paper/reset")
 async def reset_paper_account():
-    paper_broker.ledger.reset_account()
+    # FIX #7: Run DB reset in thread pool
+    await asyncio.to_thread(paper_broker.ledger.reset_account)
     return {"status": "RESET"}
 
 @app.get("/api/overview")

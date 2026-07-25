@@ -37,6 +37,8 @@ class BlackScholes:
 class VolSurface:
     @staticmethod
     def generate_surface(S, base_iv, r=0.05):
+        # FIX E: Seed RNG for deterministic surface (prevents flickering on refresh)
+        np.random.seed(42)
         # Simulate the institutional "Volatility Smile/Skew"
         strikes = np.linspace(S * 0.8, S * 1.2, 15)
         expirations = np.array([7, 14, 30, 60, 90]) / 365.0

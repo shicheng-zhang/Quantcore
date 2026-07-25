@@ -34,7 +34,11 @@ class ResearchValidator:
             expected_max_sr = leading - correction
 
         # Variance of the Sharpe Ratio estimator
+        # FIX #4: Clamp sr_var to prevent sqrt(negative) = NaN.
+        # With high skewness and large observed_sr, the formula can produce
+        # negative variance, which breaks the z-score calculation.
         sr_var = (1 - skewness * observed_sr + ((kurtosis - 1) / 4) * observed_sr**2) / annualization_factor
+        sr_var = max(1e-8, sr_var)  # Numerical stability floor
 
         # Test statistic (Z-score)
         z_score = (observed_sr - expected_max_sr) / np.sqrt(sr_var)
@@ -42,11 +46,14 @@ class ResearchValidator:
         # P-value (Probability that this SR is luck)
         p_value = 1 - ss.norm.cdf(z_score)
 
+        # FIX #4: Clamp probability to [0, 1] to prevent floating point drift
+        dsr_prob = float(np.clip(1 - p_value, 0.0, 1.0))
+
         return {
             "observed_sr": round(float(observed_sr), 3),
             "expected_max_sr_noise": round(float(expected_max_sr), 3),
-            "dsr_probability": round(float(1 - p_value), 4), # Probability it IS real alpha
-            "is_significant": bool((1 - p_value) > 0.95),
+            "dsr_probability": round(dsr_prob, 4),
+            "is_significant": bool(dsr_prob > 0.95),
             "trials_penalized": int(num_trials)
         }
 

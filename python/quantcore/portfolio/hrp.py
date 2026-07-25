@@ -30,6 +30,12 @@ class HRPOptimizer:
     @staticmethod
     def _get_quasi_diag(link: np.ndarray, n_items: int) -> List[int]:
         """Sort items by hierarchical clustering (Optimal Leaf Ordering)."""
+        # FIX #2: Guard against empty/degenerate linkage matrices.
+        # If clustering fails (e.g., <3 assets, perfect correlation), link can be empty.
+        # Return sequential ordering as a safe fallback.
+        if link.size == 0 or n_items < 2:
+            return list(range(n_items))
+
         link = link.astype(int)
         sort_idx = pd.Series([link[-1, 0], link[-1, 1]])
         

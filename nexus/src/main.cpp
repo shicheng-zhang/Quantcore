@@ -6,6 +6,7 @@
 #include <chrono>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <numeric>
 #include <atomic>
@@ -29,6 +30,7 @@
 #include <ixwebsocket/IXWebSocket.h>
 #include <ixwebsocket/IXWebSocketServer.h>
 #include <nlohmann/json.hpp>
+#include <filesystem>
 
 using namespace nexus;
 using json = nlohmann::json;
@@ -53,7 +55,13 @@ double portfolio_value = 100000.0;
 std::atomic<bool> running{true};
 std::atomic<uint64_t> events_processed{0};
 std::atomic<double> last_price{0.0};
-std::vector<double> latencies;
+// FIX #5: Circular buffer for latency tracking.
+// The old vector stopped collecting after 100k events, freezing telemetry forever.
+// This ring buffer always keeps the most recent 100k samples fresh.
+static constexpr size_t LATENCY_BUFFER_SIZE = 100000;
+std::array<double, LATENCY_BUFFER_SIZE> latency_ring{};
+std::atomic<size_t> latency_head{0};
+std::atomic<size_t> latency_count{0};
 std::mutex latency_mutex;
 
 uint64_t get_nanos() {
@@ -83,10 +91,13 @@ void engine_loop() {
             uint64_t latency = process_time - event.timestamp_ns;
             {
                 std::lock_guard<std::mutex> lock(latency_mutex);
-                if (latencies.size() < 100000) latencies.push_back(static_cast<double>(latency));
+                size_t idx = latency_head.fetch_add(1, std::memory_order_relaxed) % LATENCY_BUFFER_SIZE;
+                latency_ring[idx] = static_cast<double>(latency);
+                size_t cnt = latency_count.load(std::memory_order_relaxed);
+                if (cnt < LATENCY_BUFFER_SIZE) latency_count.fetch_add(1, std::memory_order_relaxed);
             }
 
-            
+
             // --- HIVE-MIND IPC READER ---
             if (hive_bridge) {
                 static uint64_t last_seq = 0;
@@ -233,10 +244,12 @@ void telemetry_loop() {
     while(running.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+        // FIX #5: Snapshot the circular buffer for percentile calculation
+        size_t count = latency_count.load(std::memory_order_relaxed);
         std::vector<double> current_latencies;
-        {
-            std::lock_guard<std::mutex> lock(latency_mutex);
-            current_latencies = latencies;
+        current_latencies.reserve(count);
+        for (size_t i = 0; i < count; ++i) {
+            current_latencies.push_back(latency_ring[i]);
         }
 
         double mean = 0, p99 = 0, max_lat = 0;
@@ -279,7 +292,7 @@ void telemetry_loop() {
     telemetry_json["lit_fills"] = ops.lit_venue_fills.load();
     telemetry_json["dark_fills"] = ops.dark_pool_fills.load();
     telemetry_json["dark_improvement"] = ops.dark_pool_improvement_bps.load();
-    
+
     std::ofstream out("data/nexus_live.json");
     out << telemetry_json.dump(4);
     out.close();
@@ -292,37 +305,47 @@ void telemetry_loop() {
 void trigger_ghost_execution(uint64_t, double, double);
 
 void ghost_stress_test_loop() {
+    auto last_check = std::chrono::steady_clock::now();
     while(running.load()) {
         if (ghost_lob.reality.is_active.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } else {
-            // Check for trigger file from FastAPI
-            std::ifstream f("data/ghost_trigger.json");
-            if (f.good()) {
-                f.seekg(0, std::ios::end);
-                size_t size = f.tellg();
-                if (size > 10) {
-                    f.seekg(0);
-                    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-                    // Crude JSON parse for speed (no external lib needed for this simple trigger)
-                    size_t sh_pos = content.find("\"shares\":");
-                    size_t vol_pos = content.find("\"vol\":");
-                    if (sh_pos != std::string::npos && vol_pos != std::string::npos) {
-                        uint64_t shares = std::stoull(content.substr(sh_pos + 9, content.find(",", sh_pos) - (sh_pos + 9)));
-                        double vol = std::stod(content.substr(vol_pos + 6, content.find("}", vol_pos) - (vol_pos + 6)));
-                        double price = ghost_lob.reality.current_market_price.load();
-                        if (price == 0.0) price = last_price.load();
-                        if (price > 0) {
+            auto now = std::chrono::steady_clock::now();
+            // Only check file every 5 seconds (was 500ms — wasteful I/O)
+            if (std::chrono::duration_cast<std::chrono::seconds>(now - last_check).count() >= 5) {
+                last_check = now;
+                std::error_code ec;
+                if (std::filesystem::exists("data/ghost_trigger.json", ec)) {
+                    std::ifstream f("data/ghost_trigger.json", std::ios::binary);
+                    if (f) {
+                        std::string file_content((std::istreambuf_iterator<char>(f)),
+                                                  std::istreambuf_iterator<char>());
+                        f.close();  // FIX #6: Explicit close
+                        try {
+                            json trigger = json::parse(file_content);
+                            if (trigger.contains("shares") && trigger.contains("vol")) {
+                                uint64_t shares = trigger["shares"].get<uint64_t>();
+                                double vol = trigger["vol"].get<double>();
+                                double price = ghost_lob.reality.current_market_price.load();
+                                if (price == 0.0) price = last_price.load();
+                                if (price > 0) {
+                                    std::remove("data/ghost_trigger.json");
+                                    trigger_ghost_execution(shares, price, vol);
+                                }
+                            }
+                        } catch (const json::exception& e) {
+                            // Malformed trigger file — remove it and continue
+                            std::cerr << "[NEXUS] Malformed ghost_trigger.json: " << e.what() << std::endl;
                             std::remove("data/ghost_trigger.json");
-                            trigger_ghost_execution(shares, price, vol);
                         }
                     }
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
 }
+
 
 void trigger_ghost_execution(uint64_t shares, double price, double vol) {
     if (!ghost_lob.reality.is_active.load()) {
@@ -356,12 +379,12 @@ void microstructure_generator_loop() {
         double vol = 0.02 + (rand() % 100) / 5000.0; // Simulated regime vol
         micro_sim.generate_orders(vol, mid_price, event_queue);
         micro_sim.apply_jitter(event_queue);
-        
+
         // AUDIT THE SYNTHETIC MARKET GENERATION (Continuous Ledger Chaining)
         audit_log.append_event(get_nanos(), "SYNTHETIC_TICK", mid_price, vol);
         // Simulate institutional SOR routing for Ops dashboard
         if (rand() % 5 == 0) ops.route_order(100 + (rand() % 900), mid_price);
-        
+
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }

@@ -185,7 +185,11 @@ class AnalyticsEngine:
         try:
             # Always fetch daily data for prediction math stability
             df_math = self.fetch_live_data(symbol, "1y", "1d")
-            math_prices = df_math['Close'].astype(float).tolist()
+            # FIX A: Drop NaN rows before passing to C++ engine
+            math_prices = df_math['Close'].dropna().astype(float).tolist()
+
+            if len(math_prices) < 20:
+                return {"error": "Insufficient clean data for predictions"}
 
             features = {
                 "zscore_20": self.feature_engine.rolling_zscore(math_prices, 20),
@@ -194,10 +198,15 @@ class AnalyticsEngine:
             current_zscore = features["zscore_20"][-1] if features["zscore_20"] else 0
             current_vol = features["volatility"][-1] if features["volatility"] else 0
 
+            # FIX A: Guard against NaN/Inf in zscore and volatility
+            import math as _math
+            if not _math.isfinite(current_zscore): current_zscore = 0.0
+            if not _math.isfinite(current_vol): current_vol = 0.0
+
             trend_data = self.get_trend_analysis(symbol, period, interval)
             predictions = []
             base_price = math_prices[-1]
-            
+
             # --- FUTURE DATE INJECTION ---
             last_date_str = trend_data['dates'][-1] if trend_data.get('dates') else None
             try:
@@ -215,16 +224,19 @@ class AnalyticsEngine:
 
             for i in range(1, 6):
                 pred_price = base_price * (1 - current_zscore * 0.01 * i) if abs(current_zscore) > 1.5 else base_price * (1 + current_zscore * 0.005 * i)
+                # FIX A: Clamp prediction to prevent NaN/Inf from propagating
+                if not _math.isfinite(pred_price): pred_price = base_price
                 future_dt = last_dt + (delta * i)
                 future_str = future_dt.strftime('%Y-%m-%d') if interval in ['1d', '1wk', '1mo'] else future_dt.strftime('%Y-%m-%d %H:%M')
                 predictions.append({"day": i, "date": future_str, "price": pred_price, "confidence": max(0.5, 1.0 - abs(current_zscore) * 0.1)})
 
-            return {
+            # FIX A: Sanitize the ENTIRE return value to prevent NaN JSON crashes
+            return self._sanitize_for_json({
                 "symbol": symbol, "current_price": base_price, "predictions": predictions,
                 "zscore": current_zscore, "volatility": current_vol,
                 "recommendation": "HOLD" if abs(current_zscore) < 1.0 else ("BUY" if current_zscore < -1.5 else "SELL"),
                 "historical": trend_data
-            }
+            })
         except Exception as e:
             traceback.print_exc()
             return {"error": str(e)}

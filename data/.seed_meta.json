@@ -1,10 +1,10 @@
 {
-  "boot_count": 3,
-  "last_seed": "2026-07-25T00:00:00",
-  "reseed_count": 0,
+  "boot_count": 4,
+  "last_seed": "2026-07-25T16:38:52.062491",
+  "reseed_count": 1,
   "source_hashes": {
-    "python/quantcore/research/backtester.py": "d60a94f9907a47b23a66367e2c05552a",
-    "python/quantcore/portfolio/hrp.py": "26102fe67c76515ab1f99e8b2008c0d0",
+    "python/quantcore/research/backtester.py": "3541db7fb9b706e52815f9aad953b79e",
+    "python/quantcore/portfolio/hrp.py": "d789e3d9d2e0d10a8e431600fb11ea8b",
     "web/backend/analytics.py": "6039e8eebc812b95908fa97472da217a"
   }
 }
