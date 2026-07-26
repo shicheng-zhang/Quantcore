@@ -115,16 +115,16 @@ async function loadTrend() {
     const data = await fetch(`/api/trend/${symbol}?period=${period}&interval=${interval}`).then(r => r.json());
     if (data.error) { alert(data.error); return; }
 
-    document.getElementById('current-price').textContent = `$${data.current_price.toFixed(2)}`;
+    document.getElementById('current-price').textContent = `$${(data.current_price ?? 0).toFixed(2)}`;
     const changeEl = document.getElementById('price-change');
-    changeEl.textContent = `${data.price_change > 0 ? '+' : ''}${data.price_change.toFixed(2)}%`;
+    changeEl.textContent = `${(data.price_change ?? 0) > 0 ? '+' : ''}${(data.price_change ?? 0).toFixed(2)}%`;
     changeEl.className = `text-sm ${data.price_change > 0 ? 'text-green-400' : 'text-red-400'}`;
 
     const trendEl = document.getElementById('current-trend');
     trendEl.textContent = data.current_trend;
     trendEl.className = `text-3xl font-bold ${data.current_trend === 'BULLISH' ? 'text-green-400' : 'text-red-400'}`;
 
-    const zscoreVal = data.zscore && data.zscore.length > 0 ? data.zscore[data.zscore.length - 1] : 0;
+    const zscoreVal = (data.zscore && data.zscore.length > 0 && data.zscore[data.zscore.length - 1] != null) ? data.zscore[data.zscore.length - 1] : 0;
     document.getElementById('current-zscore').textContent = zscoreVal.toFixed(2);
 
     const traces = [

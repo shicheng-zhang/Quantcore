@@ -156,7 +156,10 @@ class Backtester:
         total_return = (equity[-1] / equity[0]) - 1
         # FIX #8: Only annualize if we have >= 30 days of data.
         # Annualizing a 5-day backtest produces absurd CAGR values (e.g., 1% over 5 days → 65% CAGR).
-        if n_days >= 30:
+        # FIX B: Guard against total loss (negative base → complex number → NaN)
+        if total_return <= -1.0:
+            cagr = -1.0  # Total wipeout
+        elif n_days >= 30:
             ann_factor = 252 / n_days
             cagr = (1 + total_return) ** ann_factor - 1
         else:

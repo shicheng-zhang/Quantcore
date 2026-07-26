@@ -40,6 +40,7 @@ class AnalyticsEngine:
     def __init__(self):
         self.data_engine = core.DataEngine("data/analytics.db")
         self.feature_engine = core.FeatureEngine()
+        self._live_cache = {}  # FIX: 60s TTL cache to stop hammering yfinance
         self._load_local_cache()
 
     def _load_local_cache(self):
@@ -89,20 +90,36 @@ class AnalyticsEngine:
             raise ValueError(f"{symbol} not found in database")
 
     def fetch_live_data(self, symbol: str, period: str, interval: str = "1d") -> pd.DataFrame:
-        """Pulls fresh data directly from Yahoo Finance on the fly."""
+        """Pulls fresh data from Yahoo Finance with a 60s TTL cache.
+        
+        The cache stops multiple endpoints (overview, signals, trends, predictions)
+        from re-downloading the same symbol and tripping yfinance rate limits,
+        which return empty DataFrames and surface as "No live data found".
+        """
+        import time as _time
+        cache_key = f"{symbol}_{period}_{interval}"
+        now = _time.time()
+        cached = self._live_cache.get(cache_key)
+        if cached is not None and (now - cached["ts"]) < 60:
+            return cached["df"].copy()
         print(f"Fetching live {symbol} | period: {period} | interval: {interval}")
         df = yf.download(symbol, period=period, interval=interval, progress=False)
         if df.empty:
+            # Rate-limited or transient failure: serve last good data instead of erroring
+            if cached is not None:
+                print(f"[WARN] yfinance empty for {symbol}; serving stale cache")
+                return cached["df"].copy()
             raise ValueError(f"No live data found for {symbol} ({period} / {interval})")
-
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.droplevel(1)
-
         df = df.reset_index()
         if 'Date' not in df.columns and 'Datetime' in df.columns:
             df.rename(columns={'Datetime': 'Date'}, inplace=True)
-
-        return df
+        # FIX: drop NaN Close rows so NaN never reaches the C++ engine / JSON
+        if 'Close' in df.columns:
+            df = df.dropna(subset=['Close'])
+        self._live_cache[cache_key] = {"df": df, "ts": now}
+        return df.copy()
 
     def get_symbols(self) -> List[str]:
         try:
@@ -146,7 +163,7 @@ class AnalyticsEngine:
             if len(prices) < 50:
                 # Fallback to daily 1y data for math context if intraday period is too short
                 df_math = self.fetch_live_data(symbol, "1y", "1d")
-                math_prices = df_math['Close'].astype(float).tolist()
+                math_prices = df_math['Close'].dropna().astype(float).tolist()
                 sma_20 = self.feature_engine.rolling_mean(math_prices, 20)
                 sma_50 = self.feature_engine.rolling_mean(math_prices, 50)
                 zscore = self.feature_engine.rolling_zscore(math_prices, 50)
