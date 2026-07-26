@@ -143,7 +143,7 @@ Use at your own risk.
 
 GPLv3
 
-## ⚠️ Known Limitations (V1.0-AlphaRC3)
+## ⚠️ Known Limitations (V1.0.0-RC4)
 QuantCore is currently in Beta. While the architecture is sound and the core pipeline is tested, the following limitations apply:
 - **Broker Integration:** Alpaca integration is credential-only and tested against paper environments. Live trading requires additional safety guards.
 - **Data Sources:** `yfinance` is used for historical data. Rate limits may apply.
