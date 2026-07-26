@@ -2,6 +2,9 @@ import duckdb
 import json
 import os
 import random
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class CIOAttributor:
     def __init__(self, paper_broker=None):
@@ -41,7 +44,7 @@ class CIOAttributor:
                     metrics["execution_alpha_bps"] = max(0, 15.0 - avg_slip)
 
             except Exception as e:
-                print(f"CIO DB Error: {e}")
+                logger.error(f"CIO metrics DB error: {e}")
 
         log_path = "data/quant_daemon.log"
         if os.path.exists(log_path):

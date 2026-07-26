@@ -3,6 +3,9 @@ import time
 import json
 import os
 from datetime import datetime
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class SatelliteEngine:
@@ -93,7 +96,7 @@ class SatelliteEngine:
                 except Exception:
                     continue
         except Exception as e:
-            print(f"[SATELLITE] RSS Error: {e}")
+            logger.warning(f"RSS fetch error: {e}")
 
         self._rss_cache = headlines
         self._last_rss_fetch = now
@@ -144,7 +147,7 @@ class SatelliteEngine:
                     "entities": ["MACRO", "LIVE"]
                 })
         except Exception as e:
-            print(f"[SATELLITE] RSS inject error: {e}")
+            logger.warning(f"RSS inject error: {e}")
 
         # 4. Persist a deduplicated rolling window
         existing = []

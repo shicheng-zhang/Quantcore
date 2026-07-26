@@ -6,3 +6,35 @@ data/*.bin
 data/*.duckdb
 data/*.parquet
 data/*.log
+
+# Runtime state (regenerated on boot)
+data/autopilot.flag
+data/surveillance_halt.flag
+data/ghost_trigger.json
+
+# Logs
+data/*.log
+data/nexus_live.json
+data/hivemind_ui.json
+data/stat_arb_ui.json
+data/satellite_feed.json
+data/time_machine_report.json
+data/alpha_signals.json
+data/alpha_health.json
+data/alpha_history.json
+data/.seed_meta.json
+data/audit_ledger.bin
+data/hivemind.dat
+data/paper_broker.duckdb
+data/analytics.db
+
+# Backup files
+*.bak
+
+# Build artifacts
+build/
+nexus/build/
+__pycache__/
+*.pyc
+*.so
+data_cache/

@@ -92,7 +92,7 @@
                                 <a href="/execution" class="block px-4 py-2 text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/execution' %}bg-gray-700{% endif %}">Execution Algos</a>
                                 <a href="/nexus" class="block px-4 py-2 text-sm font-bold text-red-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/nexus' %}bg-gray-700{% endif %}">Nexus HFT</a>
                                 <a href="/day_trading" class="block px-4 py-2 text-sm font-bold text-orange-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/day_trading' %}bg-gray-700{% endif %}">Day Trading Desk</a>
-                    <a href="/rl_lab" class="block px-4 py-2 text-sm font-bold text-orange-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/rl_lab' %}bg-gray-700{% endif %}">RL Execution</a>
+                    <a href="/rl_lab" class="block px-4 py-2 text-sm font-bold text-orange-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/rl_lab' %}bg-gray-700{% endif %}">RL Execution <span class="text-[10px] bg-orange-900/80 text-orange-300 px-1.5 py-0.5 rounded ml-1 align-middle">EXP</span></a>
                             </div>
                         </div>
                     </div>
@@ -108,7 +108,7 @@
                                 <a href="/hivemind" class="block px-4 py-2 text-sm font-bold text-cyan-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/hivemind' %}bg-gray-700{% endif %}">Hive-Mind</a>
                                 <a href="/sim_lab" class="block px-4 py-2 text-sm font-bold text-indigo-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/sim_lab' %}bg-gray-700{% endif %}">Level 4 Sim</a>
                                 <a href="/ops" class="block px-4 py-2 text-sm font-bold text-red-500 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/ops' %}bg-gray-700{% endif %}">Institutional Ops</a>
-                                <a href="/alt_data" class="block px-4 py-2 text-sm font-bold text-pink-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/alt_data' %}bg-gray-700{% endif %}">Satellite Lab</a>
+                                <a href="/alt_data" class="block px-4 py-2 text-sm font-bold text-pink-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/alt_data' %}bg-gray-700{% endif %}">Satellite Lab <span class="text-[10px] bg-pink-900/80 text-pink-300 px-1.5 py-0.5 rounded ml-1 align-middle">EXP</span></a>
                                 <a href="/macro" class="block px-4 py-2 text-sm font-bold text-teal-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/macro' %}bg-gray-700{% endif %}">Macro Desk</a>
 <a href="/time_machine" class="block px-4 py-2 text-sm font-bold text-violet-400 hover:bg-gray-700 hover:text-white transition-colors {% if request.url.path == '/time_machine' %}bg-gray-700{% endif %}">Time Machine</a>
                             </div>
@@ -308,13 +308,13 @@ function openEduDrawer(data) {
     document.getElementById('drawer-wallstreet').innerText = data.wallstreet;
     document.getElementById('drawer-software').innerText = data.software;
     document.getElementById('drawer-pnl').innerText = data.pnl;
-    drawer.classList.add('open');
-    overlay.classList.add('open');
+    document.getElementById('edu-drawer').classList.add('open');
+    document.getElementById('edu-overlay').classList.add('open');
 }
 
 function closeEduDrawer() {
-    drawer.classList.remove('open');
-    overlay.classList.remove('open');
+    document.getElementById('edu-drawer').classList.remove('open');
+    document.getElementById('edu-overlay').classList.remove('open');
 }
 </script>
 

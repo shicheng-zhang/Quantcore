@@ -15,6 +15,9 @@ import hashlib
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 META_FILE = "data/.seed_meta.json"
 DATA_DIR = "data/raw/equities"
@@ -89,16 +92,16 @@ def _do_reseed():
         reseeded = 0
         for sym in starter:
             # Always re-download to refresh stale data
-            print(f"[SEED GUARD] Refreshing {sym}...")
+            logger.info(f"Refreshing {sym}...")
             try:
                 engine.add_symbol(sym)
                 reseeded += 1
             except Exception as e:
-                print(f"[SEED GUARD] Failed {sym}: {e}")
-        print(f"[SEED GUARD] Reseed complete. {reseeded} symbols refreshed.")
+                logger.error(f"Failed to refresh {sym}: {e}")
+        logger.info(f"Reseed complete: {reseeded} symbols refreshed")
         return reseeded
     except Exception as e:
-        print(f"[SEED GUARD] Reseed failed: {e}")
+        logger.error(f"Reseed failed: {e}")
         return 0
 
 
@@ -134,7 +137,7 @@ def check_and_reseed(force: bool = False) -> dict:
     }
 
     if needs_reseed:
-        print(f"[SEED GUARD] Reseed triggered: {', '.join(reasons)}")
+        logger.info(f"Reseed triggered: {', '.join(reasons)}")
         reseeded = _do_reseed()
         # Update meta after successful reseed
         meta["last_seed"] = datetime.now().isoformat()
@@ -143,7 +146,7 @@ def check_and_reseed(force: bool = False) -> dict:
         meta["reseed_count"] = meta.get("reseed_count", 0) + 1
         status["reseeded_symbols"] = reseeded
     else:
-        print(f"[SEED GUARD] Data fresh. Age: {age:.1f}d | Boots: {boot_count}/{MAX_BOOTS} | No reseed needed.")
+        logger.debug(f"Data fresh. Age: {age:.1f}d | Boots: {boot_count}/{MAX_BOOTS}")
 
     _save_meta(meta)
     return status
@@ -157,4 +160,4 @@ def start_guard_async():
 
     t = threading.Thread(target=_worker, daemon=True, name="seed-guard")
     t.start()
-    print("[SEED GUARD] Background freshness check scheduled.")
+    logger.info("Background freshness check scheduled")

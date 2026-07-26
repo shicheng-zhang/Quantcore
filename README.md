@@ -1,4 +1,4 @@
-# ⚡ QuantCore V1.0-Alpha, RC3
+# ⚡ QuantCore V1.0.0-RC4
 ### A Local Quantitative Trading Research & Execution Platform *(Work in Progress)*
 
 > **Project Status:** 🚧 Active Development

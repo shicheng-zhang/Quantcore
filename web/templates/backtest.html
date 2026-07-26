@@ -15,6 +15,12 @@
             <label class="block text-sm font-medium text-gray-400 mb-2">Slippage / Costs (bps)</label>
             <input type="number" id="bt-slippage" value="5" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white">
         </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Strategy Trials Tested</label>
+            <input type="number" id="bt-trials" value="10" min="1" step="1"
+                   class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-full text-white"
+                   title="How many strategy variations did you test? The Deflated Sharpe Ratio penalizes for multiple testing.">
+        </div>
         <div class="flex items-end">
             <div class="grid grid-cols-2 gap-2 w-full">
             <button onclick="runBacktest()" id="bt-btn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded font-bold">Run Backtest</button>

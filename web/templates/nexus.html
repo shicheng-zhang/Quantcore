@@ -199,9 +199,9 @@ async function loadTelemetry() {
         document.getElementById('stat-spread').innerText = (data.spread_bps || 0).toFixed(2);
         document.getElementById('lob-bid').innerText = `$${(data.best_bid || data.last_price || 0).toFixed(2)}`;
         document.getElementById('lob-ask').innerText = `$${(data.best_ask || data.last_price || 0).toFixed(2)}`;
-        document.getElementById('lat-mean').innerText = `${(data.latency_ns_mean || 0).toFixed(1)} ns`;
-        document.getElementById('lat-p99').innerText = `${(data.latency_ns_p99 || 0).toFixed(1)} ns`;
-        document.getElementById('lat-max').innerText = `${(data.latency_ns_max || 0).toFixed(1)} ns`;
+        
+        
+        
 
         // Sync Bookmap Mid-Price with Live Telemetry
         if (data.last_price > 0) midPrice = data.last_price;

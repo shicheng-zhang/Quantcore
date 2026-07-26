@@ -18,6 +18,9 @@ import traceback
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
 import quantcore.quantcore_cpp as core
+from python.quantcore.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class AnalyticsEngine:
     @staticmethod
@@ -47,37 +50,37 @@ class AnalyticsEngine:
         try:
             self.data_engine.load_parquet_directory("market_data", "data/raw/equities/")
         except Exception as e:
-            print(f"Warning: Could not load local cache: {e}")
+            logger.warning(f"Could not load local cache: {e}")
 
     def add_symbol(self, symbol: str):
         symbol = symbol.upper()
-        print(f"Downloading max history for {symbol} to local cache...")
+        logger.info(f"Downloading max history for {symbol}")
         try:
             # Use Ticker.history() instead of download() to guarantee flat columns
             ticker = yf.Ticker(symbol)
             df = ticker.history(period="max")
         except Exception as e:
             raise ValueError(f"yfinance network error: {str(e)}")
-            
-        if df.empty: 
+
+        if df.empty:
             raise ValueError(f"No data found for {symbol}. Check if the ticker is valid.")
-            
+
         df['symbol'] = symbol
         df = df.reset_index()
-        
+
         # Standardize the date column name
-        if 'Date' not in df.columns and 'Datetime' in df.columns: 
+        if 'Date' not in df.columns and 'Datetime' in df.columns:
             df.rename(columns={'Datetime': 'Date'}, inplace=True)
         elif 'Date' not in df.columns and 'Date' in df.index.names:
             df = df.reset_index()
-            
+
         # Drop any weird multi-index artifacts just in case
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.droplevel(1)
-            
+
         table = pa.Table.from_pandas(df)
         pq.write_table(table, f"data/raw/equities/{symbol}.parquet")
-        print(f"Saved {symbol} to local cache")
+        logger.info(f"Saved {symbol} to local cache")
         self._load_local_cache()
 
     def remove_symbol(self, symbol: str):
@@ -91,7 +94,7 @@ class AnalyticsEngine:
 
     def fetch_live_data(self, symbol: str, period: str, interval: str = "1d") -> pd.DataFrame:
         """Pulls fresh data from Yahoo Finance with a 60s TTL cache.
-        
+
         The cache stops multiple endpoints (overview, signals, trends, predictions)
         from re-downloading the same symbol and tripping yfinance rate limits,
         which return empty DataFrames and surface as "No live data found".
@@ -102,12 +105,13 @@ class AnalyticsEngine:
         cached = self._live_cache.get(cache_key)
         if cached is not None and (now - cached["ts"]) < 60:
             return cached["df"].copy()
-        print(f"Fetching live {symbol} | period: {period} | interval: {interval}")
-        df = yf.download(symbol, period=period, interval=interval, progress=False)
-        if df.empty:
-            # Rate-limited or transient failure: serve last good data instead of erroring
+        logger.debug(f"Fetching {symbol} | {period} | {interval}")
+        try:
+            df = fetch_ohlcv(symbol, period, interval)
+        except (ValueError, Exception):
+            # All providers failed: serve last good data instead of erroring
             if cached is not None:
-                print(f"[WARN] yfinance empty for {symbol}; serving stale cache")
+                logger.warning(f"All providers failed for {symbol}; serving stale cache")
                 return cached["df"].copy()
             raise ValueError(f"No live data found for {symbol} ({period} / {interval})")
         if isinstance(df.columns, pd.MultiIndex):
@@ -172,7 +176,7 @@ class AnalyticsEngine:
                 sma_20 = sma_20[offset:]
                 sma_50 = sma_50[offset:]
                 zscore = zscore[offset:]
-                
+
                 # Safety padding: if math data was somehow shorter than UI data, pad with 0.0
                 while len(zscore) < len(prices):
                     zscore.append(0.0)

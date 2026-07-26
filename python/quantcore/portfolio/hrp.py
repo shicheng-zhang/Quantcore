@@ -4,6 +4,9 @@ import pandas as pd
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as ssd
 from typing import List
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class HRPOptimizer:
     """
@@ -59,7 +62,7 @@ class HRPOptimizer:
         # The result must contain exactly n_items unique indices in [0, n_items)
         if len(result) != n_items or len(set(result)) != n_items or any(x < 0 or x >= n_items for x in result):
             # Fallback: simple sequential ordering (always valid, just suboptimal)
-            print(f"[HRP WARNING] Quasi-diag produced invalid output ({len(result)} items, {len(set(result))} unique). Falling back to sequential order.")
+            logger.warning(f"Quasi-diag invalid output ({len(result)} items, {len(set(result))} unique). Fallback to sequential.")
             result = list(range(n_items))
 
         return result

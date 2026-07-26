@@ -7,6 +7,9 @@ import json
 import os
 from datetime import datetime
 from fastapi import HTTPException
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class AlphaHunter:
     def __init__(self):
@@ -38,7 +41,7 @@ class AlphaHunter:
 
         return df
     def fetch_universe(self):
-        print(f"[ALPHA] Scanning universe: {len(self.universe)} assets...")
+        logger.info(f"Scanning universe: {len(self.universe)} assets")
         frames = []
         
         for ticker in self.universe:
@@ -55,7 +58,7 @@ class AlphaHunter:
                 df = self._normalize_date(df)
                 frames.append(df)
             except Exception as e:
-                print(f"Warning: Failed to fetch {ticker}: {e}")
+                logger.warning(f"Failed to fetch {ticker}: {e}")
         
         if not frames:
             return None

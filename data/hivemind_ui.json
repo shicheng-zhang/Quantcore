@@ -1,1 +1,1 @@
-{"active": true, "sequence": 4303, "assets": ["BTC-USD", "ETH-USD"], "weights": [0.5, 0.5], "regime_vol": 0.02, "cpp_slippage": 0.0, "cpp_pnl": 11138893.298001958, "cpp_orders": 445460224, "py_timestamp": 1785025808836487936, "cpp_timestamp": 0}
+{"active": true, "sequence": 4316, "assets": ["BTC-USD", "ETH-USD"], "weights": [0.5, 0.5], "regime_vol": 0.02, "cpp_slippage": 0.0, "cpp_pnl": 11464274.47047636, "cpp_orders": 458590364, "py_timestamp": 1785094415939876096, "cpp_timestamp": 0}

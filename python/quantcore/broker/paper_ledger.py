@@ -1,6 +1,9 @@
 import duckdb
 import os
 import threading
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class PaperLedger:
@@ -31,7 +34,7 @@ class PaperLedger:
                 ).fetchall()
                 return {"cash": cash, "initial_cash": initial, "positions": positions}
             except Exception as e:
-                print(f"[LEDGER ERROR] get_state: {e}")
+                logger.error(f"get_state failed: {e}")
                 return {"cash": 1000000.0, "initial_cash": 1000000.0, "positions": []}
 
     def reset_account(self):
@@ -81,9 +84,9 @@ class PaperLedger:
                     VALUES (current_timestamp, ?, ?, ?, ?, ?, ?)
                 """, [symbol, side, qty, price, slip_bps, commission])
 
-                print(f"[LEDGER] FILLED: {side} {qty} {symbol} @ {price}")
+                logger.info(f"FILLED: {side} {qty} {symbol} @ {price}")
             except Exception as e:
-                print(f"[LEDGER ERROR] execute_fill: {e}")
+                logger.error(f"execute_fill failed: {e}")
 
     def get_recent_trades(self, limit=20):
         with self._lock:

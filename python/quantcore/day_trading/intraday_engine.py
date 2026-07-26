@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import math
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def _sanitize_for_json(obj):
     if isinstance(obj, dict):
@@ -32,7 +35,7 @@ class IntradayEngine:
                     df = df.reset_index().rename(columns={'Datetime': 'Date'})
                 return df
         except Exception as e:
-            print(f"YF failed for {symbol}: {e}")
+            logger.warning(f"yfinance failed for {symbol}, using synthetic: {e}")
         return self._generate_synthetic(symbol, interval, period)
 
     def _generate_synthetic(self, symbol, interval, period):
