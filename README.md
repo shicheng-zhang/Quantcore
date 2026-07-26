@@ -149,3 +149,14 @@ QuantCore is currently in Beta. While the architecture is sound and the core pip
 - **Data Sources:** `yfinance` is used for historical data. Rate limits may apply.
 - **Stub Modules:** `alt_data/` (NLP/Whale flow), `rl/` (RL execution), and `nlp/` modules are currently structural stubs that fail gracefully.
 - **Live Feeds:** The C++ Nexus engine uses synthetic microstructure data when disconnected from live Binance WebSocket feeds.
+
+## Screenshots
+<img width="3413" height="1243" alt="Screenshot 2026-06-27 130117" src="https://github.com/user-attachments/assets/27122353-1743-4b9c-8af8-4823be7627d1" />
+<img width="3418" height="1245" alt="Screenshot 2026-06-27 130137" src="https://github.com/user-attachments/assets/abb5e1cc-69fe-43be-ad35-1211d74ea25d" />
+<img width="3415" height="1246" alt="Screenshot 2026-06-27 130215" src="https://github.com/user-attachments/assets/1cb484bb-e982-4cfb-94d7-3436de12986a" />
+<img width="3438" height="1252" alt="Screenshot 2026-06-27 130229" src="https://github.com/user-attachments/assets/1d8d240d-6e96-4eb9-92db-4a6bf7cca5b3" />
+<img width="3438" height="1247" alt="Screenshot 2026-06-27 130255" src="https://github.com/user-attachments/assets/9de558f8-d151-478c-bec5-e28d0a63ddf3" />
+<img width="3420" height="1252" alt="Screenshot 2026-06-27 130326" src="https://github.com/user-attachments/assets/020e03d3-83b0-4daa-9247-92ca563de588" />
+<img width="3432" height="1252" alt="Screenshot 2026-06-27 130404" src="https://github.com/user-attachments/assets/f1913b05-035e-47eb-94f9-d1fe7aeea211" />
+<img width="3413" height="1245" alt="Screenshot 2026-06-27 130512" src="https://github.com/user-attachments/assets/7040f66a-92f8-4ca6-9318-a0e0d6092771" />
+
