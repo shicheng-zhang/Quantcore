@@ -1,5 +1,7 @@
 # QuantCore 1.0
 
+## Note, this project will be transfered to the secondary repository as a stock market analytics tool only once I am geographically available to create a outlook account for the secondary github. Anyone is free to request the project and I will transfer the repository to them without any issue.
+
 ## Overview
 QuantCore is a modular quantitative research, simulation, paper trading, and execution platform combining a C++20 computation engine with Python services and a FastAPI backend.
 
