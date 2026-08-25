@@ -48,17 +48,15 @@ class PaperLedger:
         with self._lock:
             try:
                 cost = qty * price
-                slip_cost = cost * (slip_bps / 10000.0)
-
                 if side == "BUY":
                     self.con.execute(
                         "UPDATE account SET cash = cash - ?",
-                        [cost + slip_cost + commission]
+                        [cost + commission]
                     )
                 else:
                     self.con.execute(
                         "UPDATE account SET cash = cash + ?",
-                        [cost - slip_cost - commission]
+                        [cost - commission]
                     )
 
                 pos = self.con.execute(
@@ -85,8 +83,10 @@ class PaperLedger:
                 """, [symbol, side, qty, price, slip_bps, commission])
 
                 logger.info(f"FILLED: {side} {qty} {symbol} @ {price}")
+                return True
             except Exception as e:
                 logger.error(f"execute_fill failed: {e}")
+                return False
 
     def get_recent_trades(self, limit=20):
         with self._lock:

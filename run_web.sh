@@ -12,4 +12,4 @@ cd "$(dirname "$0")"
 export LD_LIBRARY_PATH="$(pwd)/build/_deps/duckdb-build/src:$(pwd)/python/quantcore:$LD_LIBRARY_PATH"
 
 # Run FastAPI with uvicorn
-uvicorn web.backend.main:app --host 127.0.0.1 --port 8765 --reload
+uvicorn web.backend.main:app --host 127.0.0.1 --port 8765

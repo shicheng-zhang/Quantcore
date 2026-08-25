@@ -12,7 +12,7 @@ tmux send-keys -t $SESSION "cd $(pwd) && python3 -u python/quantcore/hivemind/qu
 
 # Pane 2: FastAPI Web UI (Bottom)
 tmux split-window -v -t $SESSION:0.1
-tmux send-keys -t $SESSION "cd $(pwd) && python3 -m uvicorn web.backend.main:app --host 127.0.0.1 --port 8765 --reload" C-m
+tmux send-keys -t $SESSION "cd $(pwd) && python3 -m uvicorn web.backend.main:app --host 127.0.0.1 --port 8765" C-m
 
 tmux select-pane -t 0
 echo "=========================================="

@@ -32,7 +32,8 @@ async def broadcast_tape(data):
         try:
             await client.send_json(data)
         except Exception:
-            pass
+            if client in TAPE_CLIENTS:
+                TAPE_CLIENTS.remove(client)
 
 
 def init_state():
@@ -64,3 +65,16 @@ def init_state():
     intraday_bt = IntradayBacktester()
     tactical_engine = IntradaySignalEngine()
     alpaca_broker = AlpacaBroker()
+
+
+def close_state():
+    """Release persistent resources during FastAPI shutdown."""
+    global analytics, paper_broker
+    if paper_broker and getattr(paper_broker, "ledger", None):
+        try:
+            paper_broker.ledger.con.close()
+        except Exception:
+            pass
+    analytics = None
+    paper_broker = None
+    TAPE_CLIENTS.clear()

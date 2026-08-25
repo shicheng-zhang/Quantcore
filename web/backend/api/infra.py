@@ -6,9 +6,11 @@ import os
 import subprocess
 import sys
 import numpy as np
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from .. import state
 from ..schemas import GauntletRequest
+from ..security import require_control_access
+from ..runtime import read_json
 
 router = APIRouter(tags=["infra"])
 
@@ -17,15 +19,9 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '
 
 # --- HIVE-MIND IPC ---
 @router.post("/api/hivemind/start_daemon")
-async def start_daemon():
-    os.system("pkill -f quant_daemon.py >/dev/null 2>&1")
-    log_path = os.path.join(BASE_DIR, "data", "quant_daemon.log")
-    with open(log_path, "w") as log_file:
-        subprocess.Popen(
-            [sys.executable, "-u", "python/quantcore/hivemind/quant_daemon.py"],
-            cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT
-        )
-    return {"status": "STARTED"}
+async def start_daemon(_: None = Depends(require_control_access)):
+    result = await asyncio.to_thread(subprocess.run, [sys.executable, "python/scripts/supervisor.py", "start", "hivemind"], cwd=BASE_DIR, capture_output=True, text=True, timeout=10)
+    return {"status": "STARTED" if not result.returncode else "ERROR", "message": result.stderr or result.stdout}
 
 
 @router.get("/api/hivemind/status")
@@ -33,13 +29,12 @@ async def hivemind_status():
     path = os.path.join(BASE_DIR, "data", "hivemind_ui.json")
     if not os.path.exists(path):
         return {"active": False}
-    with open(path, "r") as f:
-        return json.load(f)
+    return read_json(path, {"active": False, "status": "DEGRADED"})
 
 
 @router.get("/api/hivemind/logs")
 async def hivemind_logs():
-    path = os.path.join(BASE_DIR, "data", "quant_daemon.log")
+    path = os.path.join(BASE_DIR, "data", "runtime", "hivemind.log")
     if not os.path.exists(path):
         return {"logs": "Waiting for daemon..."}
     with open(path, "r") as f:
@@ -53,13 +48,12 @@ async def statarb_status():
     path = os.path.join(BASE_DIR, "data", "stat_arb_ui.json")
     if not os.path.exists(path):
         return {"active": False, "top_pairs": [], "active_pair": None}
-    with open(path, "r") as f:
-        return json.load(f)
+    return read_json(path, {"active": False, "top_pairs": [], "active_pair": None})
 
 
 # --- TIME MACHINE ---
 @router.post("/api/time_machine/run")
-async def run_time_machine(req: dict):
+async def run_time_machine(req: dict, _: None = Depends(require_control_access)):
     scenario = req.get("scenario", "2022_crypto_winter")
     return await asyncio.to_thread(state.time_machine.run_stress_test, scenario)
 
@@ -69,8 +63,7 @@ async def get_tm_report():
     path = os.path.join(BASE_DIR, "data", "time_machine_report.json")
     if not os.path.exists(path):
         return {"status": "IDLE"}
-    with open(path, "r") as f:
-        return json.load(f)
+    return read_json(path, {"status": "DEGRADED"})
 
 
 # --- MACRO DESK ---
@@ -130,7 +123,7 @@ async def get_model_health():
 
 # --- RISK COMMITTEE GAUNTLET ---
 @router.post("/api/risk/gauntlet")
-async def run_gauntlet_api(req: GauntletRequest):
+async def run_gauntlet_api(req: GauntletRequest, _: None = Depends(require_control_access)):
     return await asyncio.to_thread(
         state.risk_committee.evaluate_strategy,
         req.strategy_name, req.observed_sr, req.num_trials, req.universe
@@ -139,7 +132,7 @@ async def run_gauntlet_api(req: GauntletRequest):
 
 # --- SEED GUARD (AUTO-RESEED) ---
 @router.post("/api/seed/force")
-async def force_reseed():
+async def force_reseed(_: None = Depends(require_control_access)):
     from python.quantcore.data.seed_guard import check_and_reseed
     return await asyncio.to_thread(check_and_reseed, True)
 

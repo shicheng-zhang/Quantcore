@@ -27,6 +27,7 @@ data/audit_ledger.bin
 data/hivemind.dat
 data/paper_broker.duckdb
 data/analytics.db
+data/alpaca_creds.json
 
 # Backup files
 *.bak
@@ -38,3 +39,5 @@ __pycache__/
 *.pyc
 *.so
 data_cache/
+data/runtime/
+data/nexus_live.json.tmp

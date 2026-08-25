@@ -12,8 +12,12 @@ class TradingPipeline:
     def __init__(self, config_path: str = "config/system.yaml"):
         with open(config_path) as f: self.config = yaml.safe_load(f)
         self.event_bus = core.EventBus()
-        self.data_engine = core.DataEngine(self.config.get("database_path", "data/analytics.db"))
-        self.risk_engine = core.RiskEngine(core.RiskConfig(), self.event_bus)
+        self.data_engine = core.DataEngine(self.config.get("system", {}).get("database_path", "data/analytics.db"))
+        risk_config = core.RiskConfig()
+        for name in ("max_position_pct", "max_daily_loss_pct", "max_drawdown_pct"):
+            if name in self.config.get("risk", {}):
+                setattr(risk_config, name, self.config["risk"][name])
+        self.risk_engine = core.RiskEngine(risk_config, self.event_bus)
         self.strategies: list[BaseStrategy] = []
         self.running = False
         signal.signal(signal.SIGINT, lambda s,f: self._shutdown())

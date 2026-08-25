@@ -1,9 +1,10 @@
 """Broker endpoints: paper trading, Alpaca integration, autopilot control."""
 import asyncio
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from .. import state
 from ..schemas import PaperOrder, AlpacaCreds
+from ..security import require_control_access
 
 router = APIRouter(tags=["broker"])
 
@@ -16,7 +17,7 @@ async def get_paper_state():
 
 
 @router.post("/api/paper/order")
-async def submit_paper_order(order: PaperOrder):
+async def submit_paper_order(order: PaperOrder, _: None = Depends(require_control_access)):
     result = await asyncio.to_thread(
         state.paper_broker.submit_order, order.symbol, order.side, order.qty, order.algo
     )
@@ -26,20 +27,20 @@ async def submit_paper_order(order: PaperOrder):
 
 
 @router.post("/api/paper/reset")
-async def reset_paper_account():
+async def reset_paper_account(_: None = Depends(require_control_access)):
     await asyncio.to_thread(state.paper_broker.ledger.reset_account)
     return {"status": "RESET"}
 
 
 @router.post("/api/paper/autopilot/engage")
-async def engage_autopilot():
+async def engage_autopilot(_: None = Depends(require_control_access)):
     with open("data/autopilot.flag", "w") as f:
         f.write("ACTIVE")
     return {"status": "ENGAGED"}
 
 
 @router.post("/api/paper/autopilot/disengage")
-async def disengage_autopilot():
+async def disengage_autopilot(_: None = Depends(require_control_access)):
     if os.path.exists("data/autopilot.flag"):
         os.remove("data/autopilot.flag")
     return {"status": "DISENGAGED"}
@@ -52,7 +53,7 @@ async def autopilot_status():
 
 # --- Alpaca (single definition — duplicate removed per release checklist #12) ---
 @router.post("/api/alpaca/config")
-async def config_alpaca(creds: AlpacaCreds):
+async def config_alpaca(creds: AlpacaCreds, _: None = Depends(require_control_access)):
     state.alpaca_broker.save_creds(creds.key_id, creds.secret_key, creds.base_url)
     return {"status": "SAVED"}
 
@@ -68,5 +69,5 @@ async def alpaca_status():
 
 
 @router.post("/api/alpaca/order")
-async def submit_alpaca_order(order: PaperOrder):
+async def submit_alpaca_order(order: PaperOrder, _: None = Depends(require_control_access)):
     return state.alpaca_broker.submit_order(order.symbol, order.side, order.qty, order.algo)

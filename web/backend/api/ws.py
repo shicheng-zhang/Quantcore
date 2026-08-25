@@ -19,5 +19,7 @@ async def ws_tape(websocket: WebSocket):
         while True:
             await asyncio.sleep(1)
     except Exception:
+        pass
+    finally:
         if websocket in state.TAPE_CLIENTS:
             state.TAPE_CLIENTS.remove(websocket)

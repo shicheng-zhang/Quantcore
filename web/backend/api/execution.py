@@ -6,16 +6,18 @@ import os
 import subprocess
 import sys
 import time
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from .. import state
 from ..schemas import ExecutionRequest, GhostRequest, PaperOrder
+from ..security import require_control_access
+from ..runtime import read_json, write_json_atomic
 
 router = APIRouter(tags=["execution"])
 
 # Path constants (project root is three levels up from web/backend/api/)
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 NEXUS_BIN = os.path.join(BASE_DIR, "nexus", "build", "nexus_core")
-LOG_FILE = os.path.join(BASE_DIR, "data", "nexus_core.log")
+LOG_FILE = os.path.join(BASE_DIR, "data", "runtime", "nexus.log")
 LIVE_JSON = os.path.join(BASE_DIR, "data", "nexus_live.json")
 STATIC_JSON = os.path.join(BASE_DIR, "data", "nexus_telemetry.json")
 
@@ -31,15 +33,18 @@ async def get_nexus_telemetry():
     path = LIVE_JSON if os.path.exists(LIVE_JSON) else STATIC_JSON
     if not os.path.exists(path):
         return {"status": "IDLE", "message": "Engine has not been run yet."}
-    with open(path, "r") as f:
-        return json.load(f)
+    return read_json(path, {"status": "DEGRADED", "message": "Telemetry is being updated; retry shortly."})
 
 
 @router.post("/api/nexus/start")
-async def start_nexus_engine():
-    os.system(f"pkill -f '{NEXUS_BIN}' >/dev/null 2>&1")
-    with open(LOG_FILE, "w") as log_file:
-        subprocess.Popen(["stdbuf", "-oL", NEXUS_BIN], cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
+async def start_nexus_engine(_: None = Depends(require_control_access)):
+    result = await asyncio.to_thread(
+        subprocess.run,
+        [sys.executable, "python/scripts/supervisor.py", "start", "nexus"],
+        cwd=BASE_DIR, capture_output=True, text=True, timeout=10,
+    )
+    if result.returncode:
+        return {"status": "ERROR", "message": result.stderr or result.stdout}
     return {"status": "STARTED", "message": "Nexus Live Engine engaged."}
 
 
@@ -53,9 +58,8 @@ async def get_nexus_logs():
 
 
 @router.post("/api/nexus/ghost_execute")
-async def ghost_execute(req: GhostRequest):
-    with open("data/ghost_trigger.json", "w") as f:
-        json.dump({"shares": req.shares, "vol": req.volatility}, f)
+async def ghost_execute(req: GhostRequest, _: None = Depends(require_control_access)):
+    write_json_atomic("data/ghost_trigger.json", {"shares": req.shares, "vol": req.volatility})
     return {"status": "TRIGGERED"}
 
 
@@ -64,8 +68,7 @@ async def ghost_status():
     live_path = os.path.join(BASE_DIR, "data", "nexus_live.json")
     if not os.path.exists(live_path):
         return {"ghost_active": False}
-    with open(live_path, "r") as f:
-        data = json.load(f)
+    data = read_json(live_path, {})
     return {
         "active": data.get("ghost_active", False),
         "target": data.get("ghost_target", 0),
@@ -89,7 +92,7 @@ async def run_intraday_backtest(symbol: str, interval: str = "5m"):
 
 
 @router.post("/api/day_trading/scalp")
-async def execute_scalp(order: PaperOrder):
+async def execute_scalp(order: PaperOrder, _: None = Depends(require_control_access)):
     result = state.paper_broker.submit_order(order.symbol, order.side, order.qty, "VWAP")
     if result.get("status") == "FILLED":
         asyncio.create_task(state.broadcast_tape(result))
@@ -105,7 +108,11 @@ async def get_tactical_alerts():
 
 
 @router.post("/api/rl/train")
-async def train_rl():
-    subprocess.Popen([sys.executable, "python/quantcore/rl/train.py"], cwd=BASE_DIR)
-    subprocess.Popen([sys.executable, "python/quantcore/rl/export_cpp.py"], cwd=BASE_DIR)
+async def train_rl(_: None = Depends(require_control_access)):
+    # Export depends on a completed training artifact; doing both concurrently
+    # can export a stale or partially written model.
+    def train_then_export():
+        subprocess.run([sys.executable, "python/quantcore/rl/train.py"], cwd=BASE_DIR, check=True)
+        subprocess.run([sys.executable, "python/quantcore/rl/export_cpp.py"], cwd=BASE_DIR, check=True)
+    asyncio.create_task(asyncio.to_thread(train_then_export))
     return {"status": "TRAINING_STARTED"}

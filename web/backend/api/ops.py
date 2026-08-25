@@ -4,8 +4,9 @@ import json
 import os
 import subprocess
 import sys
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from .. import state
+from ..security import require_control_access
 
 router = APIRouter(tags=["ops"])
 
@@ -37,29 +38,23 @@ async def get_cio_metrics():
 
 
 @router.post("/api/ops/kill_switch")
-async def trigger_kill():
+async def trigger_kill(_: None = Depends(require_control_access)):
     with open("data/surveillance_halt.flag", "w") as f:
         f.write("MANUAL_KILL_SWITCH")
     return {"status": "HALTED"}
 
 
 @router.post("/api/ops/reset")
-async def reset_ops():
+async def reset_ops(_: None = Depends(require_control_access)):
     if os.path.exists("data/surveillance_halt.flag"):
         os.remove("data/surveillance_halt.flag")
     return {"status": "RESET"}
 
 
 @router.post("/api/ops/start_surveillance")
-async def start_surveillance():
-    os.system("pkill -f surveillance_daemon.py >/dev/null 2>&1")
-    log_path = os.path.join(BASE_DIR, "data", "surveillance.log")
-    with open(log_path, "w") as log_file:
-        subprocess.Popen(
-            [sys.executable, "-u", "python/quantcore/ops/surveillance_daemon.py"],
-            cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT
-        )
-    return {"status": "STARTED"}
+async def start_surveillance(_: None = Depends(require_control_access)):
+    result = await asyncio.to_thread(subprocess.run, [sys.executable, "python/scripts/supervisor.py", "start", "surveillance"], cwd=BASE_DIR, capture_output=True, text=True, timeout=10)
+    return {"status": "STARTED" if not result.returncode else "ERROR", "message": result.stderr or result.stdout}
 
 
 @router.get("/api/sim/ledger_verify")

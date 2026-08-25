@@ -4,21 +4,19 @@ import os
 
 class AlpacaBroker:
     def __init__(self):
-        self.creds_file = "data/alpaca_creds.json"
-        self.creds = self._load_creds()
-        
-    def _load_creds(self):
-        if os.path.exists(self.creds_file):
-            try:
-                with open(self.creds_file, "r") as f:
-                    return json.load(f)
-            except: pass
-        return None
+        # Never persist brokerage secrets in the working tree. Environment
+        # variables are suitable for unattended local deployments; UI-provided
+        # credentials remain in this process only.
+        key_id = os.getenv("APCA_API_KEY_ID")
+        secret_key = os.getenv("APCA_API_SECRET_KEY")
+        self.creds = ({"key_id": key_id, "secret_key": secret_key,
+                       "base_url": "https://paper-api.alpaca.markets"}
+                      if key_id and secret_key else None)
 
     def save_creds(self, key_id, secret_key, base_url="https://paper-api.alpaca.markets"):
+        if base_url != "https://paper-api.alpaca.markets":
+            raise ValueError("Only Alpaca's paper-trading endpoint is permitted")
         creds = {"key_id": key_id, "secret_key": secret_key, "base_url": base_url}
-        with open(self.creds_file, "w") as f:
-            json.dump(creds, f)
         self.creds = creds
 
     def is_configured(self):
@@ -53,7 +51,7 @@ class AlpacaBroker:
             if res.status_code in [200, 201]:
                 data = res.json()
                 status = data.get("status", "pending_new")
-                if status in ["filled", "pending_new", "new"]:
+                if status == "filled":
                     return {
                         "status": "FILLED",
                         "symbol": symbol,
@@ -65,8 +63,9 @@ class AlpacaBroker:
                         "theoretical_price": 0.0,
                         "order_id": data.get("id")
                     }
-                else:
-                    return {"status": "REJECTED", "reason": f"Alpaca status: {status}"}
+                if status in ["pending_new", "new", "accepted"]:
+                    return {"status": "ACCEPTED", "order_id": data.get("id"), "broker_status": status}
+                return {"status": "REJECTED", "reason": f"Alpaca status: {status}"}
             else:
                 return {"status": "REJECTED", "reason": f"HTTP {res.status_code}: {res.text[:100]}"}
         except Exception as e:
