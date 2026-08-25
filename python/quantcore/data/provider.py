@@ -10,6 +10,7 @@ so we raise a clear error rather than returning wrong data).
 """
 import time
 import io
+import threading
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -18,19 +19,22 @@ from typing import Optional
 # In-memory TTL cache: {cache_key: (timestamp, DataFrame)}
 _cache: dict = {}
 _CACHE_TTL = 60  # seconds
+_cache_lock = threading.RLock()
 
 
 def _cache_get(key: str) -> Optional[pd.DataFrame]:
-    if key in _cache:
-        ts, df = _cache[key]
-        if time.time() - ts < _CACHE_TTL:
-            return df.copy()
-        del _cache[key]
+    with _cache_lock:
+        if key in _cache:
+            ts, df = _cache[key]
+            if time.time() - ts < _CACHE_TTL:
+                return df.copy()
+            del _cache[key]
     return None
 
 
 def _cache_set(key: str, df: pd.DataFrame):
-    _cache[key] = (time.time(), df.copy())
+    with _cache_lock:
+        _cache[key] = (time.time(), df.copy())
 
 
 # --- Stooq symbol mapping ---
@@ -118,7 +122,9 @@ def _fetch_yfinance(symbol: str, period: str = "1y", interval: str = "1d") -> Op
     """Fetch from yfinance. Returns None on failure."""
     try:
         import yfinance as yf
-        df = yf.download(symbol, period=period, interval=interval, progress=False)
+        # Bound provider latency: callers have a durable local-cache fallback,
+        # so a stalled remote quote source must not hold a web request hostage.
+        df = yf.download(symbol, period=period, interval=interval, progress=False, timeout=5)
         if df.empty:
             return None
         if isinstance(df.columns, pd.MultiIndex):

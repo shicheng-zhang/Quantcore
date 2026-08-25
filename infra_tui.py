@@ -201,7 +201,7 @@ class InfraTUI(App):
     # --- WEB & SURVEILLANCE ACTIONS ---
     def action_start_web(self) -> None:
         log_file = open(DATA_DIR / "uvicorn.log", "w")
-        subprocess.Popen([sys.executable, "-m", "uvicorn", "web.backend.main:app", "--host", "127.0.0.1", "--port", "8765", "--reload"],
+        subprocess.Popen([sys.executable, "-m", "uvicorn", "web.backend.main:app", "--host", "127.0.0.1", "--port", "8765"],
                          cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
         self.notify("Web UI Started (http://127.0.0.1:8765)")
 

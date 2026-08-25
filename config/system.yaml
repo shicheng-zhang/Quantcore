@@ -1,7 +1,9 @@
 config_version: 1
 system:
   database_path: "data/analytics.db"
+  runtime_dir: "data/runtime"
 data:
+  prefer_live_data: false
   parquet_views:
     market_data: "data/raw/equities/"
 risk:

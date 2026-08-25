@@ -29,6 +29,7 @@ from .api.execution import router as execution_router
 from .api.research import router as research_router
 from .api.broker import router as broker_router
 from .schemas import PaperOrder  # used by scalp route below
+from python.quantcore.config import load_config
 
 analytics: AnalyticsEngine = None
 
@@ -36,13 +37,17 @@ analytics: AnalyticsEngine = None
 async def lifespan(app: FastAPI):
     global analytics, paper_broker
     # Phase 1: singletons live in state.py, created here (worker process only).
+    app.state.config = load_config()
     state.init_state()
     analytics = state.analytics        # keep module globals in sync during migration
     paper_broker = state.paper_broker
     # Auto-reseed guard: checks data freshness in background thread
     from python.quantcore.data.seed_guard import start_guard_async
     start_guard_async()
-    yield
+    try:
+        yield
+    finally:
+        state.close_state()
 
 app = FastAPI(title="QuantCore Dashboard", lifespan=lifespan)
 app.include_router(analytics_router)
@@ -134,4 +139,3 @@ async def day_trading_page(request: Request):
     return templates.TemplateResponse(request, "day_trading.html")
 
 import time
-

@@ -17,7 +17,15 @@ class PaperBroker:
 
     def submit_order(self, symbol, side, qty, algo, live_price=None):
         symbol = symbol.upper()
-        price = live_price if live_price else self.mock_prices.get(symbol.upper(), 100.0)
+        side = side.upper()
+        algo = algo.upper()
+        if side not in {"BUY", "SELL"} or algo not in {"MARKET", "VWAP", "TWAP"}:
+            return {"status": "REJECTED", "reason": "INVALID_ORDER"}
+        if not isinstance(qty, (int, float)) or isinstance(qty, bool) or qty <= 0:
+            return {"status": "REJECTED", "reason": "INVALID_QUANTITY"}
+        if live_price is not None and live_price <= 0:
+            return {"status": "REJECTED", "reason": "INVALID_PRICE"}
+        price = live_price if live_price is not None else self.mock_prices.get(symbol.upper(), 100.0)
 
         # Simulate Almgren-Chriss Slippage based on Algo
         if algo == "MARKET":
@@ -36,10 +44,17 @@ class PaperBroker:
             fill_price = price * (1 - (slip_bps / 10000.0))
 
         state = self.ledger.get_state()
-        if side == "BUY" and (qty * fill_price) > state["cash"]:
+        if side == "BUY" and (qty * fill_price + commission) > state["cash"]:
             return {"status": "REJECTED", "reason": "INSUFFICIENT_BUYING_POWER"}
+        if side == "SELL":
+            held = next((position[1] for position in state["positions"] if position[0] == symbol), 0.0)
+            if qty > held:
+                return {"status": "REJECTED", "reason": "INSUFFICIENT_POSITION"}
 
-        self.ledger.execute_fill(symbol, side, qty, fill_price, slip_bps, commission)
+        # ``fill_price`` already includes market impact.  Do not charge slippage
+        # again inside the ledger or every trade is overstated by one spread.
+        if not self.ledger.execute_fill(symbol, side, qty, fill_price, slip_bps, commission):
+            return {"status": "REJECTED", "reason": "LEDGER_WRITE_FAILED"}
 
         return {
             "status": "FILLED",

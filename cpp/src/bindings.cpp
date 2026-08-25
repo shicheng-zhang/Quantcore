@@ -20,7 +20,7 @@ PYBIND11_MODULE(quantcore_cpp, m) {
 
     py::class_<Tick>(m, "Tick").def(py::init<>()).def_readwrite("symbol", &Tick::symbol).def_readwrite("price", &Tick::price);
     py::class_<Order>(m, "Order").def(py::init<>()).def_readwrite("id", &Order::id).def_readwrite("symbol", &Order::symbol).def_readwrite("side", &Order::side).def_readwrite("quantity", &Order::quantity).def_readwrite("limit_price", &Order::limit_price);
-    py::class_<PortfolioSnapshot>(m, "PortfolioSnapshot").def(py::init<>()).def_readwrite("total_equity", &PortfolioSnapshot::total_equity).def_readwrite("daily_pnl", &PortfolioSnapshot::daily_pnl);
+    py::class_<PortfolioSnapshot>(m, "PortfolioSnapshot").def(py::init<>()).def_readwrite("total_equity", &PortfolioSnapshot::total_equity).def_readwrite("daily_pnl", &PortfolioSnapshot::daily_pnl).def_readwrite("cash", &PortfolioSnapshot::cash).def_readwrite("drawdown_pct", &PortfolioSnapshot::drawdown_pct);
 
     py::class_<EventBus>(m, "EventBus").def(py::init<>()).def("publish_tick", &EventBus::publish<Tick>);
 
@@ -46,7 +46,7 @@ PYBIND11_MODULE(quantcore_cpp, m) {
         .def_static("rolling_zscore", &FeatureEngine::rolling_zscore_avx512)
         .def_static("order_book_imbalance", &FeatureEngine::order_book_imbalance);
 
-    py::class_<RiskConfig>(m, "RiskConfig").def(py::init<>()).def_readwrite("max_position_pct", &RiskConfig::max_position_pct);
+    py::class_<RiskConfig>(m, "RiskConfig").def(py::init<>()).def_readwrite("max_position_pct", &RiskConfig::max_position_pct).def_readwrite("max_daily_loss_pct", &RiskConfig::max_daily_loss_pct).def_readwrite("max_drawdown_pct", &RiskConfig::max_drawdown_pct);
     py::class_<RiskResult>(m, "RiskResult").def_readonly("decision", &RiskResult::decision).def_readonly("reason", &RiskResult::reason);
-    py::class_<RiskEngine>(m, "RiskEngine").def(py::init<const RiskConfig&, EventBus&>()).def("check_order", &RiskEngine::check_order).def("is_halted", &RiskEngine::is_halted);
+    py::class_<RiskEngine>(m, "RiskEngine").def(py::init<const RiskConfig&, EventBus&>()).def("check_order", &RiskEngine::check_order).def("update_portfolio", &RiskEngine::update_portfolio).def("is_halted", &RiskEngine::is_halted);
 }

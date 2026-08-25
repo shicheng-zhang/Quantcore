@@ -31,6 +31,7 @@
 #include <ixwebsocket/IXWebSocketServer.h>
 #include <nlohmann/json.hpp>
 #include <filesystem>
+#include <csignal>
 
 using namespace nexus;
 using json = nlohmann::json;
@@ -63,6 +64,10 @@ std::array<double, LATENCY_BUFFER_SIZE> latency_ring{};
 std::atomic<size_t> latency_head{0};
 std::atomic<size_t> latency_count{0};
 std::mutex latency_mutex;
+
+void handle_shutdown_signal(int) {
+    running.store(false, std::memory_order_relaxed);
+}
 
 uint64_t get_nanos() {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -213,7 +218,7 @@ void live_data_ingestor() {
                 // m = true means buyer is market maker (so this was a SELL market order)
                 ev.side = j["m"].get<bool>() ? Side::SELL : Side::BUY;
 
-                while (!event_queue.push(ev)) {
+                while (running.load(std::memory_order_relaxed) && !event_queue.push(ev)) {
                     #if defined(__x86_64__)
                         __builtin_ia32_pause();
                     #endif
@@ -245,11 +250,16 @@ void telemetry_loop() {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         // FIX #5: Snapshot the circular buffer for percentile calculation
-        size_t count = latency_count.load(std::memory_order_relaxed);
         std::vector<double> current_latencies;
-        current_latencies.reserve(count);
-        for (size_t i = 0; i < count; ++i) {
-            current_latencies.push_back(latency_ring[i]);
+        {
+            // Keep the hot-path writer blocked only for the copy, never for
+            // the percentile sort below.
+            std::lock_guard<std::mutex> lock(latency_mutex);
+            size_t count = latency_count.load(std::memory_order_relaxed);
+            current_latencies.reserve(count);
+            for (size_t i = 0; i < count; ++i) {
+                current_latencies.push_back(latency_ring[i]);
+            }
         }
 
         double mean = 0, p99 = 0, max_lat = 0;
@@ -293,9 +303,19 @@ void telemetry_loop() {
     telemetry_json["dark_fills"] = ops.dark_pool_fills.load();
     telemetry_json["dark_improvement"] = ops.dark_pool_improvement_bps.load();
 
-    std::ofstream out("data/nexus_live.json");
-    out << telemetry_json.dump(4);
-    out.close();
+    // Readers must see either the preceding complete snapshot or this complete
+    // snapshot, never a partially written JSON document.
+    const std::filesystem::path telemetry_path{"data/nexus_live.json"};
+    const std::filesystem::path temporary_path{"data/nexus_live.json.tmp"};
+    {
+        std::ofstream out(temporary_path, std::ios::trunc);
+        out << telemetry_json.dump(4);
+    }
+    std::error_code rename_error;
+    std::filesystem::rename(temporary_path, telemetry_path, rename_error);
+    if (rename_error) {
+        std::cerr << "[NEXUS] Telemetry write failed: " << rename_error.message() << '\n';
+    }
     }
 }
 
@@ -391,6 +411,8 @@ void microstructure_generator_loop() {
 
 int main() {
     std::cout << "=== NEXUS LIVE TRADING ENGINE ===\n";
+    std::signal(SIGINT, handle_shutdown_signal);
+    std::signal(SIGTERM, handle_shutdown_signal);
     init_hivemind_bridge();
 
     std::thread consumer(engine_loop);

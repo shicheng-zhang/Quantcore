@@ -1,8 +1,10 @@
 """Analytics endpoints: overview, symbols, trend, predictions, signals, performance."""
 import asyncio
-from fastapi import APIRouter, HTTPException
+import re
+from fastapi import APIRouter, Depends, HTTPException
 from .. import state
 from ..schemas import SymbolRequest
+from ..security import require_control_access
 
 router = APIRouter(tags=["analytics"])
 
@@ -38,7 +40,7 @@ async def get_performance():
 
 
 @router.post("/api/symbols")
-async def add_symbol(req: SymbolRequest):
+async def add_symbol(req: SymbolRequest, _: None = Depends(require_control_access)):
     try:
         await asyncio.to_thread(state.analytics.add_symbol, req.symbol)
         return {"status": "success", "symbol": req.symbol.upper()}
@@ -47,8 +49,10 @@ async def add_symbol(req: SymbolRequest):
 
 
 @router.delete("/api/symbols/{symbol}")
-async def remove_symbol(symbol: str):
+async def remove_symbol(symbol: str, _: None = Depends(require_control_access)):
     try:
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,16}", symbol):
+            raise ValueError("Invalid symbol")
         await asyncio.to_thread(state.analytics.remove_symbol, symbol)
         return {"status": "success"}
     except Exception as e:

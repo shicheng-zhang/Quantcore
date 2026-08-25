@@ -4,7 +4,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import numpy as np
 import os
-import yfinance as yf
 
 import logging
 yf_logger = logging.getLogger('yfinance')
@@ -19,6 +18,7 @@ import traceback
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
 import quantcore.quantcore_cpp as core
 from python.quantcore.logging_config import get_logger
+from python.quantcore.data.provider import fetch_history_max, fetch_ohlcv
 
 logger = get_logger(__name__)
 
@@ -55,15 +55,9 @@ class AnalyticsEngine:
     def add_symbol(self, symbol: str):
         symbol = symbol.upper()
         logger.info(f"Downloading max history for {symbol}")
-        try:
-            # Use Ticker.history() instead of download() to guarantee flat columns
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period="max")
-        except Exception as e:
-            raise ValueError(f"yfinance network error: {str(e)}")
-
-        if df.empty:
-            raise ValueError(f"No data found for {symbol}. Check if the ticker is valid.")
+        df = fetch_history_max(symbol)
+        if df is None or df.empty:
+            raise ValueError(f"No data found for {symbol} from any configured provider.")
 
         df['symbol'] = symbol
         df = df.reset_index()
@@ -83,6 +77,54 @@ class AnalyticsEngine:
         logger.info(f"Saved {symbol} to local cache")
         self._load_local_cache()
 
+    @staticmethod
+    def _period_start(period: str) -> pd.Timestamp | None:
+        """Return a UTC cutoff for a standard dashboard period."""
+        now = pd.Timestamp.now(tz="UTC")
+        days = {
+            "1d": 1, "5d": 5, "7d": 7, "1mo": 31, "2mo": 62,
+            "3mo": 93, "6mo": 186, "1y": 366, "2y": 732,
+            "5y": 1830, "10y": 3660,
+        }
+        if period == "ytd":
+            return pd.Timestamp(year=now.year, month=1, day=1, tz="UTC")
+        return now - pd.Timedelta(days=days[period]) if period in days else None
+
+    def _load_local_history(self, symbol: str, period: str) -> pd.DataFrame | None:
+        """Serve the persisted daily cache when external data is unavailable.
+
+        Dashboard availability must not depend on a live provider: the local
+        parquet cache is the durable source for daily trends and predictions.
+        """
+        path = Path("data/raw/equities") / f"{symbol.upper()}.parquet"
+        if not path.is_file():
+            return None
+        try:
+            df = pd.read_parquet(path)
+            if "Date" not in df or "Close" not in df:
+                return None
+            df["Date"] = pd.to_datetime(df["Date"], utc=True, errors="coerce")
+            df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+            if "Volume" not in df:
+                df["Volume"] = 0
+            df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce").fillna(0)
+            df = df.dropna(subset=["Date", "Close"]).sort_values("Date")
+            cutoff = self._period_start(period)
+            if cutoff is not None:
+                filtered = df[df["Date"] >= cutoff]
+                # Retain recent cached observations even if the cache is stale;
+                # an empty chart is worse than clearly stale historical data.
+                if not filtered.empty:
+                    df = filtered
+            if df.empty:
+                return None
+            df.attrs["data_source"] = "local_cache"
+            df.attrs["data_interval"] = "1d"
+            return df.reset_index(drop=True)
+        except Exception as exc:
+            logger.warning("Unable to read local cache for %s: %s", symbol, exc)
+            return None
+
     def remove_symbol(self, symbol: str):
         symbol = symbol.upper()
         path = f"data/raw/equities/{symbol}.parquet"
@@ -93,11 +135,11 @@ class AnalyticsEngine:
             raise ValueError(f"{symbol} not found in database")
 
     def fetch_live_data(self, symbol: str, period: str, interval: str = "1d") -> pd.DataFrame:
-        """Pulls fresh data from Yahoo Finance with a 60s TTL cache.
+        """Return market history with local-cache-first availability semantics.
 
-        The cache stops multiple endpoints (overview, signals, trends, predictions)
-        from re-downloading the same symbol and tripping yfinance rate limits,
-        which return empty DataFrames and surface as "No live data found".
+        The persisted parquet history is the default source because dashboards
+        should remain immediately usable during provider outages or rate limits.
+        Set ``QUANTCORE_PREFER_LIVE_DATA=true`` to request a live refresh first.
         """
         import time as _time
         cache_key = f"{symbol}_{period}_{interval}"
@@ -105,15 +147,28 @@ class AnalyticsEngine:
         cached = self._live_cache.get(cache_key)
         if cached is not None and (now - cached["ts"]) < 60:
             return cached["df"].copy()
+        prefer_live = os.getenv("QUANTCORE_PREFER_LIVE_DATA", "").lower() in {"1", "true", "yes"}
+        if not prefer_live:
+            local = self._load_local_history(symbol, period)
+            if local is not None:
+                self._live_cache[cache_key] = {"df": local, "ts": now}
+                return local.copy()
         logger.debug(f"Fetching {symbol} | {period} | {interval}")
         try:
             df = fetch_ohlcv(symbol, period, interval)
-        except (ValueError, Exception):
+            df.attrs["data_source"] = "live_provider"
+            df.attrs["data_interval"] = interval
+        except Exception as exc:
             # All providers failed: serve last good data instead of erroring
             if cached is not None:
                 logger.warning(f"All providers failed for {symbol}; serving stale cache")
                 return cached["df"].copy()
-            raise ValueError(f"No live data found for {symbol} ({period} / {interval})")
+            df = self._load_local_history(symbol, period)
+            if df is None:
+                raise ValueError(
+                    f"No usable data for {symbol} ({period} / {interval}); "
+                    f"live providers failed and no local cache exists."
+                ) from exc
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.droplevel(1)
         df = df.reset_index()
@@ -148,12 +203,14 @@ class AnalyticsEngine:
     def get_trend_analysis(self, symbol: str, period: str = "1y", interval: str = "1d") -> Dict[str, Any]:
         try:
             df = self.fetch_live_data(symbol, period, interval)
+            data_source = df.attrs.get("data_source", "live_provider")
+            data_interval = df.attrs.get("data_interval", interval)
 
             dates = []
             for d in df['Date']:
                 if hasattr(d, 'strftime'):
                     # Format intraday with HH:MM, daily with just YYYY-MM-DD
-                    if interval not in ['1d', '1wk', '1mo']:
+                    if data_interval not in ['1d', '1wk', '1mo']:
                         dates.append(d.strftime('%Y-%m-%d %H:%M'))
                     else:
                         dates.append(d.strftime('%Y-%m-%d'))
@@ -197,7 +254,7 @@ class AnalyticsEngine:
             current_sma20 = sma_20[-1] if sma_20 else 0
             trend = "BULLISH" if current_price > current_sma20 else "BEARISH"
 
-            return self._sanitize_for_json({"symbol": symbol, "dates": dates, "prices": prices, "volumes": volumes, "sma_20": sma_20, "sma_50": sma_50, "zscore": zscore, "signals": signals[-10:], "current_trend": trend, "current_price": current_price, "price_change": ((prices[-1] - prices[-2]) / prices[-2] * 100) if len(prices) > 1 else 0})
+            return self._sanitize_for_json({"symbol": symbol, "dates": dates, "prices": prices, "volumes": volumes, "sma_20": sma_20, "sma_50": sma_50, "zscore": zscore, "signals": signals[-10:], "current_trend": trend, "current_price": current_price, "price_change": ((prices[-1] - prices[-2]) / prices[-2] * 100) if len(prices) > 1 else 0, "data_source": data_source, "data_interval": data_interval})
         except Exception as e:
             traceback.print_exc()
             return {"error": str(e)}

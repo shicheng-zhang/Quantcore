@@ -25,10 +25,12 @@ class ResearchValidator:
         # The old formula (just sqrt(2*ln(N))) OVERESTIMATES the expected max,
         # making the DSR test too conservative (rejects valid strategies).
         euler_mascheroni = 0.5772156649015329
-        log_n = np.log(num_trials)
-        if num_trials <= 1:
+        if num_trials < 1:
+            raise ValueError("num_trials must be at least 1")
+        if num_trials == 1:
             expected_max_sr = 0.0
         else:
+            log_n = np.log(num_trials)
             leading = np.sqrt(2 * log_n)
             correction = (np.log(np.pi) + np.log(log_n) + 2 * euler_mascheroni) / (2 * leading)
             expected_max_sr = leading - correction

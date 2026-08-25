@@ -89,6 +89,8 @@ class Backtester:
         Classic Wall Street Factor: Cross-Sectional Momentum.
         Ranks assets by trailing return. Longs top quartile, Shorts bottom quartile.
         """
+        if len(universe) < 2:
+            return {"error": "Need at least 2 valid assets in universe to run cross-sectional backtest."}
         try:
             master_df, valid_symbols = self._load_universe_data(universe)
         except ValueError as e:

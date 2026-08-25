@@ -153,7 +153,15 @@ def check_and_reseed(force: bool = False) -> dict:
 
 
 def start_guard_async():
-    """Launch the seed guard in a daemon thread (non-blocking)."""
+    """Launch the seed guard only when explicitly enabled.
+
+    Automatic reseeding performs network I/O and writes the watched data tree.
+    Running it at every web startup makes a normal dashboard dependent on the
+    network and can trigger Uvicorn reload loops.
+    """
+    if os.getenv("QUANTCORE_AUTO_RESEED", "").lower() not in {"1", "true", "yes"}:
+        logger.info("Automatic reseed disabled; use /api/seed/force or set QUANTCORE_AUTO_RESEED=true")
+        return
     def _worker():
         time.sleep(2)  # Let the app fully initialize first
         check_and_reseed()
