@@ -1,10 +1,10 @@
 # QuantCore Releases
 
-## v1.0.0
+## V1.1-Stable
 
-**Status:** Stable — first public release
+**Status:** Stable — first stabilised release
 
-QuantCore 1.0 is the first stable release of the open-source quantitative research and simulation platform. It pairs a C++20 computation and execution engine with a Python research layer and a FastAPI dashboard, all running locally with no real capital at risk.
+QuantCore 1.1 is the first stable release of the open-source quantitative research and simulation platform. It pairs a C++20 computation and execution engine with a Python research layer and a FastAPI dashboard, all running locally with no real capital at risk.
 
 This release is the result of a full stability, correctness, and honesty hardening pass. Every subsystem boots cleanly, survives data-provider outages, and reports truthfully about what is computed versus what is simulated.
 
@@ -64,4 +64,4 @@ See `USER_GUIDE.md` for the full walkthrough and `TROUBLESHOOTING.md` for known 
 
 ## Prior history
 
-Pre-1.0 development proceeded through release candidates (RC1–RC4). Those intermediate states are preserved in git history but are not supported.
+Pre-1.1 development proceeded through release candidates (RC1–RC4). Those intermediate states are preserved in git history but are not supported.
