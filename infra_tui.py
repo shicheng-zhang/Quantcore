@@ -57,6 +57,36 @@ def get_proc_status(search_term):
             pass
     return "STOPPED", None
 
+
+def _kill_matching(pattern: str) -> int:
+    """Terminate processes whose cmdline contains `pattern` (matched by PID).
+
+    Safer than `pkill -f`, and works whether the process was started by the
+    TUI, the supervisor, or by hand. Returns the number terminated.
+    """
+    targets = []
+    for proc in psutil.process_iter(["pid", "cmdline"]):
+        try:
+            cmdline = " ".join(proc.info["cmdline"] or [])
+            if pattern in cmdline:
+                targets.append(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError):
+            continue
+    if not targets:
+        return 0
+    for proc in targets:
+        try:
+            proc.terminate()  # SIGTERM -> graceful shutdown
+        except psutil.NoSuchProcess:
+            pass
+    _, alive = psutil.wait_procs(targets, timeout=3)
+    for proc in alive:
+        try:
+            proc.kill()  # SIGKILL stragglers
+        except psutil.NoSuchProcess:
+            pass
+    return len(targets)
+
 class HealthWidget(Static):
     def on_mount(self) -> None:
         self.set_interval(2.0, self.update_health)
@@ -200,18 +230,15 @@ class InfraTUI(App):
         self.notify("🚀 ENTIRE STACK ENGAGED", severity="information")
 
     def action_stop_all(self) -> None:
-        os.system("pkill -f 'uvicorn web.backend.main:app' >/dev/null 2>&1")
-        os.system("pkill -f surveillance_daemon.py >/dev/null 2>&1")
-        _supervisor("stop", "nexus")
-        _supervisor("stop", "daemon")
+        _kill_matching("uvicorn web.backend.main:app")
+        _kill_matching("surveillance_daemon.py")
+        _kill_matching("nexus_core")
+        _kill_matching("quant_daemon.py")
         self.notify("🛑 ALL PROCESSES HALTED", severity="warning")
 
     def action_kill_switch(self) -> None:
-        flag = DATA_DIR / "surveillance_halt.flag"
-        with open(flag, "w") as f:
-            f.write("MANUAL_TUI_KILL_SWITCH")
         self.action_stop_all()
-        self.notify("🚨 KILL SWITCH TRIGGERED 🚨", severity="error")
+        self.notify("🚨 KILL SWITCH TRIGGERED — all processes halted 🚨", severity="error")
 
     # --- WEB & SURVEILLANCE ACTIONS ---
     def action_start_web(self) -> None:
@@ -226,7 +253,7 @@ class InfraTUI(App):
         self.notify("Web UI Started (http://127.0.0.1:8765)")
 
     def action_stop_web(self) -> None:
-        os.system("pkill -f 'uvicorn web.backend.main:app' >/dev/null 2>&1")
+        _kill_matching("uvicorn web.backend.main:app")
         self.notify("Web UI Stopped")
 
     def action_start_surv(self) -> None:
@@ -235,7 +262,7 @@ class InfraTUI(App):
         self.notify("Surveillance Daemon Started")
 
     def action_stop_surv(self) -> None:
-        os.system("pkill -f surveillance_daemon.py >/dev/null 2>&1")
+        _kill_matching("surveillance_daemon.py")
         self.notify("Surveillance Daemon Stopped")
 
     # --- CORE ACTIONS ---
@@ -245,7 +272,7 @@ class InfraTUI(App):
         self.notify("Nexus Core Engaged")
 
     def action_stop_nexus(self) -> None:
-        _supervisor("stop", "nexus")
+        _kill_matching("nexus_core")
         self.notify("Nexus Core Halted")
 
     def action_start_daemon(self) -> None:
@@ -254,7 +281,7 @@ class InfraTUI(App):
         self.notify("Quant Daemon Started")
 
     def action_stop_daemon(self) -> None:
-        _supervisor("stop", "daemon")
+        _kill_matching("quant_daemon.py")
         self.notify("Quant Daemon Stopped")
 
     def action_clear_logs(self) -> None:
