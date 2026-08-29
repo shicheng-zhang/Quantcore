@@ -2,6 +2,7 @@ import numpy as np
 from typing import Optional
 import quantcore.quantcore_cpp as core
 from .base import BaseStrategy, Signal
+from quantcore.safe_inputs import validate_symbol, quote_symbol_sql
 
 class StatArbStrategy(BaseStrategy):
     def __init__(self, config: dict):
@@ -16,7 +17,7 @@ class StatArbStrategy(BaseStrategy):
         symbols = set()
         for a, b in self.pairs: symbols.update([a, b])
         for symbol in symbols:
-            results = data_engine.query_sql(f"SELECT \"Close\" FROM market_data WHERE symbol = '{symbol}' ORDER BY \"Date\"")
+            results = data_engine.query_sql(f"SELECT \"Close\" FROM market_data WHERE symbol = {quote_symbol_sql(symbol)} ORDER BY \"Date\"")
             self.spread_history[symbol] = [float(r['Close']) for r in results if r['Close'] is not None]
 
     def on_bar(self, symbol: str, bar_data: dict) -> Optional[Signal]:

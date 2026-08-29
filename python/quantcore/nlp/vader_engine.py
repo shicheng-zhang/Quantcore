@@ -18,7 +18,7 @@ class VaderEngine:
         if os.path.exists(self.feed_file):
             try:
                 with open(self.feed_file, "r") as f: feed = json.load(f)
-            except: pass
+            except Exception: pass
         
         feed.insert(0, {
             "type": "NEWS_SENTIMENT",

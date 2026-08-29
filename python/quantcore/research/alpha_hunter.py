@@ -1,8 +1,8 @@
 """Alpha Hunter: Scans for Lead-Lag Information Flow anomalies."""
-import yfinance as yf
 import polars as pl
 import numpy as np
 from scipy import signal
+from ..data.provider import fetch_ohlcv
 import json
 import os
 from datetime import datetime
@@ -36,7 +36,7 @@ class AlphaHunter:
         if df.schema["Date"] != pl.Datetime("us"):
             try:
                 df = df.with_columns(pl.col("Date").str.to_datetime(time_unit="us"))
-            except:
+            except Exception:
                 pass
 
         return df
@@ -47,8 +47,7 @@ class AlphaHunter:
         for ticker in self.universe:
             try:
                 # Use Ticker.history for guaranteed flat structure
-                tk = yf.Ticker(ticker)
-                df_pd = tk.history(period="1y", interval="1h")
+                df_pd = fetch_ohlcv(ticker, period="1y", interval="1h")
                 if df_pd.empty: continue
                 
                 df_pd = df_pd.reset_index()

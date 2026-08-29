@@ -1,7 +1,7 @@
-import yfinance as yf
 import pandas as pd
 import numpy as np
 import time
+from ..data.provider import fetch_ohlcv
 
 class IntradaySignalEngine:
     def __init__(self):
@@ -15,9 +15,8 @@ class IntradaySignalEngine:
             return self.cache[cache_key]['df']
             
         try:
-            df = yf.download(symbol, period="5d", interval=timeframe, progress=False)
+            df = fetch_ohlcv(symbol, period="5d", interval=timeframe)
             if df.empty: return None
-            if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.droplevel(1)
             df = df.tail(lookback)
             self.cache[cache_key] = {'df': df, 'ts': now}
             return df

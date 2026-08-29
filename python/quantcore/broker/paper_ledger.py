@@ -95,5 +95,5 @@ class PaperLedger:
                     "SELECT * FROM trades ORDER BY ts DESC LIMIT ?",
                     [limit]
                 ).fetchall()
-            except:
+            except Exception:
                 return []

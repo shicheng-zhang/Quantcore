@@ -256,7 +256,7 @@ const EDU_TERMS = {
         title: "Limit Order Book (LOB)",
         retail: "The list of all pending limit orders on an exchange. It shows the 'bids' and 'asks'. Day traders watch 'Level 2' data to see where the big buy/sell walls are.",
         wallstreet: "Quants model the entire depth to calculate Order Book Imbalance (OBI) and predict micro-second price direction. They also detect 'spoofing' (fake walls).",
-        software: "Reconstructed in O(1) time inside the Nexus C++ engine using pre-allocated flat arrays, avoiding the heap allocations of standard std::map structures.",
+        software: "Reconstructed in the Nexus C++ engine using ordered price-level maps (O(log n)): exact price keys, volume aggregation, cancel support, and best prices that walk back correctly when levels are consumed.",
         pnl: "Trading without looking at the LOB is like driving blindfolded. You might market-buy right into a massive hidden ask wall."
     },
     dark_pools: {

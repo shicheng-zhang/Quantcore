@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import yfinance as yf
 from datetime import datetime
+from ..data.provider import fetch_ohlcv
 
 class IntradayBacktester:
     def __init__(self):
@@ -9,7 +9,7 @@ class IntradayBacktester:
 
     def run_orb(self, symbol: str, period: str = "5d", interval: str = "5m", orb_minutes: int = 30):
         # Fetch intraday data
-        df = yf.download(symbol, period=period, interval=interval, progress=False)
+        df = fetch_ohlcv(symbol, period=period, interval=interval)
         if df.empty:
             return {"error": "No intraday data available."}
             

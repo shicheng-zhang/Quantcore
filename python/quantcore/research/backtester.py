@@ -44,7 +44,7 @@ class Backtester:
         if df.schema["Date"] != pl.Datetime("us"):
             try:
                 df = df.with_columns(pl.col("Date").str.to_datetime(time_unit="us"))
-            except:
+            except Exception:
                 pass
 
         return df
@@ -70,7 +70,7 @@ class Backtester:
                         df = self._normalize_date(df)
                         frames.append(df)
                         valid_symbols.append(sym)
-                except: pass
+                except Exception: pass
 
         if not frames:
             raise ValueError(f"Could not load any symbols from universe. Check tickers and data availability.")

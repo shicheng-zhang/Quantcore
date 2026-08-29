@@ -11,23 +11,42 @@ router = APIRouter(tags=["research"])
 
 @router.get("/api/research/hrp")
 async def get_hrp_allocation():
+    """HRP allocation using local-cache-first data (provider fallback active).
+
+    Previously this called the Yahoo Finance API() directly, so the Research page died
+    whenever yfinance was rate-limited — even though the rest of the app has
+    a durable local parquet cache. Now it routes through the same
+    fetch_live_data() path used by Trends/Predictions.
+    """
     symbols = state.analytics.get_symbols()
     if len(symbols) < 2:
         return {"error": "Need 2+ symbols"}
-    import yfinance as yf
+
     import pandas as pd
-    tickers = " ".join(symbols[:10])
-    data = yf.download(tickers, period="1y", interval="1d", progress=False)
-    if data.empty:
-        return {"error": "Data fetch failed"}
-    if isinstance(data.columns, pd.MultiIndex):
-        prices = data['Close']
-    else:
-        prices = data[['Close']]
-        prices.columns = symbols[:1]
+
+    def build_prices():
+        frames = {}
+        for sym in symbols[:10]:
+            try:
+                df = state.analytics.fetch_live_data(sym, "1y", "1d")
+                if df is None or df.empty or "Close" not in df.columns:
+                    continue
+                series = pd.to_numeric(df["Close"], errors="coerce")
+                series.index = pd.to_datetime(df["Date"], utc=True, errors="coerce")
+                frames[sym] = series
+            except Exception:
+                continue
+        if len(frames) < 2:
+            return None
+        prices = pd.DataFrame(frames).sort_index().ffill().dropna(axis=1, how="any")
+        return prices if len(prices.columns) >= 2 else None
+
+    prices = await asyncio.to_thread(build_prices)
+    if prices is None or prices.empty:
+        return {"error": "Data unavailable: providers failed and no local cache exists"}
+
     from quantcore.portfolio.hrp import HRPOptimizer
     return await asyncio.to_thread(HRPOptimizer.optimize, prices)
-
 
 @router.get("/api/research/validation")
 async def get_validation_metrics():
