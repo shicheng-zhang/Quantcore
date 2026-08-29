@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}RL Execution Lab - QuantCore{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-orange-400">Reinforcement Learning Execution Lab</h1>
+        <p class="text-gray-400">PPO Agent trained to minimize Almgren-Chriss slippage in the Ghost Exchange.</p>
+    </div>
+    <button onclick="trainRL()" id="train-btn" class="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded font-bold uppercase tracking-wider">Train Agent</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-green-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Algorithm</h3>
+        <p class="text-2xl font-bold">PPO (Proximal Policy Optimization)</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-blue-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">Environment</h3>
+        <p class="text-2xl font-bold">Ghost Exchange (Gymnasium)</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-purple-500">
+        <h3 class="text-xs font-medium text-gray-400 uppercase">C++ Inference</h3>
+        <p class="text-2xl font-bold">Surrogate Decision Tree</p>
+    </div>
+</div>
+<div class="bg-gray-800 rounded-lg p-6 border border-orange-500/30">
+    <h2 class="text-xl font-bold mb-4 text-orange-400">Learned Policy Logic (Exported to C++)</h2>
+    <pre class="bg-black text-green-400 p-4 rounded font-mono text-xs overflow-x-auto">
+RLAction get_rl_action(spread, vol, toxicity, rem_shares, time_rem) {
+    // Rule 1: Time decay forces aggression
+    if (time_rem < 0.2 && rem_shares > 0.1) return AGGRESSIVE_MARKET;
+
+    // Rule 2: High queue toxicity (adverse selection) forces aggression
+    if (toxicity > 0.7) return AGGRESSIVE_MARKET;
+
+    // Rule 3: Wide spread + ample time = passive limit posting
+    if (spread > 3.0 && time_rem > 0.5) return PASSIVE_LIMIT;
+
+    // Default: Institutional VWAP behavior
+    return PASSIVE_LIMIT;
+}
+    </pre>
+    <p class="text-xs text-gray-400 mt-4">The PPO agent learns these rules implicitly through reward shaping (-slippage). We extract a surrogate Decision Tree and compile it directly into the C++ hot path for nanosecond inference.</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function trainRL() {
+    const btn = document.getElementById('train-btn');
+    btn.innerText = "TRAINING..."; btn.disabled = true;
+    await fetch('/api/rl/train', {method: 'POST'});
+    setTimeout(() => { btn.innerText = "AGENT DEPLOYED"; btn.className = "bg-green-700 px-6 py-3 rounded font-bold uppercase tracking-wider"; }, 3000);
+}
+</script>
+{% endblock %}

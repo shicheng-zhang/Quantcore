@@ -184,7 +184,7 @@ class AnalyticsEngine:
         try:
             result = self.data_engine.query_sql("SELECT DISTINCT symbol FROM market_data ORDER BY symbol")
             return [row['symbol'] for row in result]
-        except:
+        except Exception:
             return [f.replace('.parquet', '') for f in os.listdir("data/raw/equities") if f.endswith('.parquet')]
 
     def get_overview(self) -> Dict[str, Any]:
@@ -197,7 +197,7 @@ class AnalyticsEngine:
                 if not valid_prices.empty:
                     price = float(valid_prices.iloc[-1])
                     if price > 0: latest_prices[symbol] = price
-            except: pass
+            except Exception: pass
         return {"total_symbols": len(symbols), "latest_prices": latest_prices, "system_status": "Active", "last_update": datetime.now().isoformat()}
 
     def get_trend_analysis(self, symbol: str, period: str = "1y", interval: str = "1d") -> Dict[str, Any]:
@@ -292,7 +292,7 @@ class AnalyticsEngine:
                     last_dt = datetime.strptime(last_date_str, '%Y-%m-%d')
                 else:
                     last_dt = datetime.strptime(last_date_str, '%Y-%m-%d %H:%M')
-            except:
+            except Exception:
                 last_dt = datetime.now()
 
             deltas = {'1m': timedelta(minutes=1), '5m': timedelta(minutes=5), '15m': timedelta(minutes=15),
@@ -326,7 +326,7 @@ class AnalyticsEngine:
                 analysis = self.get_trend_analysis(symbol, "5d", "1h")
                 if "signals" in analysis:
                     for sig in analysis["signals"][-3:]: signals.append({"symbol": symbol, "date": sig["date"], "type": sig["type"], "price": sig["price"]})
-            except: pass
+            except Exception: pass
         signals.sort(key=lambda x: x["date"], reverse=True)
         return signals[:20]
 

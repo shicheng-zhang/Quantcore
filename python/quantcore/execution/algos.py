@@ -1,7 +1,7 @@
 """Institutional Execution Algorithms."""
 import numpy as np
-import yfinance as yf
 import pandas as pd
+from ..data.provider import fetch_ohlcv
 
 class ExecutionEngine:
     """Simulates institutional order slicing (VWAP/TWAP) to minimize market impact."""
@@ -9,7 +9,7 @@ class ExecutionEngine:
     @staticmethod
     def simulate_execution(symbol: str, total_shares: int, algo: str, interval: str = "5m") -> dict:
         # Fetch recent intraday data to build a volume profile
-        df = yf.download(symbol, period="5d", interval=interval, progress=False)
+        df = fetch_ohlcv(symbol, period="5d", interval=interval)
         if df.empty: return {"error": "No data"}
 
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.droplevel(1)

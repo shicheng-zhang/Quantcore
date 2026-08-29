@@ -1,9 +1,9 @@
-import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import math
 from ..logging_config import get_logger
+from ..data.provider import fetch_ohlcv
 
 logger = get_logger(__name__)
 
@@ -25,17 +25,13 @@ class IntradayEngine:
 
     def get_intraday_data(self, symbol, interval="5m", period="5d"):
         try:
-            df = yf.download(symbol, period=period, interval=interval, progress=False)
+            df = fetch_ohlcv(symbol, period=period, interval=interval)
             if not df.empty and len(df) > 10:
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.droplevel(1)
-                df = df.reset_index()
-                if 'Datetime' in df.columns: df.rename(columns={'Datetime': 'Date'}, inplace=True)
-                elif 'Date' not in df.columns and df.index.name == 'Datetime':
-                    df = df.reset_index().rename(columns={'Datetime': 'Date'})
+                if 'Datetime' in df.columns and 'Date' not in df.columns:
+                    df.rename(columns={'Datetime': 'Date'}, inplace=True)
                 return df
         except Exception as e:
-            logger.warning(f"yfinance failed for {symbol}, using synthetic: {e}")
+            logger.warning(f"Provider failed for {symbol}, using synthetic: {e}")
         return self._generate_synthetic(symbol, interval, period)
 
     def _generate_synthetic(self, symbol, interval, period):

@@ -16,7 +16,7 @@ def require_control_access(
 ) -> None:
     """Allow loopback clients, or a caller with the configured control token."""
     host = request.client.host if request.client else ""
-    if host in {"127.0.0.1", "::1", "localhost", "testclient"}:
+    if host in {"127.0.0.1", "::1", "localhost"}:
         return
 
     expected = os.getenv("QUANTCORE_CONTROL_TOKEN")

@@ -145,7 +145,7 @@ async function loadPredictions() {
             { x: allDates, y: allSMA, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} },
             { x: allDates, y: upperBand, type: 'scatter', mode: 'lines', line: {width: 0}, showlegend: false, hoverinfo: 'skip' },
             { x: allDates, y: lowerBand, type: 'scatter', mode: 'lines', line: {width: 0}, fill: 'tonexty', fillcolor: 'rgba(139, 92, 246, 0.2)', name: 'Confidence Cone' },
-            { x: allDates, y: forecastLine, type: 'scatter', mode: 'lines+markers', name: 'AI Forecast', line: {color: '#8b5cf6', width: 3, dash: 'dot'}, marker: {size: 8, color: '#8b5cf6'} }
+            { x: allDates, y: forecastLine, type: 'scatter', mode: 'lines+markers', name: 'Mean-Reversion Projection', line: {color: '#8b5cf6', width: 3, dash: 'dot'}, marker: {size: 8, color: '#8b5cf6'} }
         ];
 
         // Y-Axis scaling

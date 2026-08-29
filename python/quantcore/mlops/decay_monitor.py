@@ -20,7 +20,7 @@ class DecayMonitor:
         if os.path.exists(self.history_file):
             try:
                 with open(self.history_file, "r") as f: history = json.load(f)
-            except: pass
+            except Exception: pass
 
         for m in models:
             # Simulate alpha decay: Half-life stretches, p-value degrades, Sharpe drops

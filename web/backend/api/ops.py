@@ -24,7 +24,7 @@ async def get_cio_metrics():
     try:
         with open("data/quant_daemon.log", "r") as f:
             vetoes = f.read().count("[SATELLITE VETO]")
-    except:
+    except Exception:
         pass
     return {
         "total_pnl": total_pnl,

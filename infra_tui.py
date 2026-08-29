@@ -32,6 +32,21 @@ from textual import work
 BASE_DIR = Path(__file__).parent.resolve()
 DATA_DIR = BASE_DIR / "data"
 
+def _supervisor(*args: str) -> None:
+    """
+    Route process control through the project supervisor instead of pkill -f.
+
+    This avoids killing unrelated processes that merely match a command-line
+    substring.
+    """
+    subprocess.run(
+        [sys.executable, str(BASE_DIR / "python" / "scripts" / "supervisor.py"), *args],
+        cwd=BASE_DIR,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
 def get_proc_status(search_term):
     for p in psutil.process_iter(['pid', 'cmdline']):
         try:
@@ -187,8 +202,8 @@ class InfraTUI(App):
     def action_stop_all(self) -> None:
         os.system("pkill -f 'uvicorn web.backend.main:app' >/dev/null 2>&1")
         os.system("pkill -f surveillance_daemon.py >/dev/null 2>&1")
-        os.system("pkill -f nexus_core >/dev/null 2>&1")
-        os.system("pkill -f quant_daemon.py >/dev/null 2>&1")
+        _supervisor("stop", "nexus")
+        _supervisor("stop", "daemon")
         self.notify("🛑 ALL PROCESSES HALTED", severity="warning")
 
     def action_kill_switch(self) -> None:
@@ -201,8 +216,13 @@ class InfraTUI(App):
     # --- WEB & SURVEILLANCE ACTIONS ---
     def action_start_web(self) -> None:
         log_file = open(DATA_DIR / "uvicorn.log", "w")
+        env = os.environ.copy()
+        duckdb_lib_dir = str(BASE_DIR / "build" / "_deps" / "duckdb-build" / "src")
+        qc_lib_dir = str(BASE_DIR / "python" / "quantcore")
+        current_ld_path = env.get("LD_LIBRARY_PATH", "")
+        env["LD_LIBRARY_PATH"] = f"{duckdb_lib_dir}:{qc_lib_dir}:{current_ld_path}"
         subprocess.Popen([sys.executable, "-m", "uvicorn", "web.backend.main:app", "--host", "127.0.0.1", "--port", "8765"],
-                         cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
+                         cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT, env=env)
         self.notify("Web UI Started (http://127.0.0.1:8765)")
 
     def action_stop_web(self) -> None:
@@ -225,7 +245,7 @@ class InfraTUI(App):
         self.notify("Nexus Core Engaged")
 
     def action_stop_nexus(self) -> None:
-        os.system("pkill -f nexus_core >/dev/null 2>&1")
+        _supervisor("stop", "nexus")
         self.notify("Nexus Core Halted")
 
     def action_start_daemon(self) -> None:
@@ -234,7 +254,7 @@ class InfraTUI(App):
         self.notify("Quant Daemon Started")
 
     def action_stop_daemon(self) -> None:
-        os.system("pkill -f quant_daemon.py >/dev/null 2>&1")
+        _supervisor("stop", "daemon")
         self.notify("Quant Daemon Stopped")
 
     def action_clear_logs(self) -> None:

@@ -54,7 +54,7 @@ class CIOAttributor:
                     vetoes = logs.count("[SATELLITE VETO]")
                     metrics["vetoes_triggered"] = vetoes
                     metrics["capital_protected"] = vetoes * 2500.0
-            except: pass
+            except Exception: pass
 
         # Simulate rolling 30d Sharpe based on PnL for the UI
         base_sharpe = 1.2

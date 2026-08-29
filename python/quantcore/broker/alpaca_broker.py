@@ -78,5 +78,5 @@ class AlpacaBroker:
             res = requests.get(f"{base_url}/v2/account", headers=self.get_headers(), timeout=5)
             if res.status_code == 200:
                 return res.json()
-        except: pass
+        except Exception: pass
         return None

@@ -162,7 +162,7 @@ def run_daemon():
                             if best_pair['signal'] == 1 and _avg_sent < -0.5: veto_trade = True
                             if best_pair['signal'] == -1 and _avg_sent > 0.5: veto_trade = True
                             if veto_trade: print(f"[SATELLITE VETO] Blocked trade. Signal: {best_pair['signal']}, Sentiment: {_avg_sent:.2f}")
-                except: pass
+                except Exception: pass
 
                 if not veto_trade:
                     bridge.statarb_signal = best_pair['signal']
