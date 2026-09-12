@@ -1,190 +1,983 @@
 {% extends "base.html" %}
-{% block title %}Predictions - QuantCore{% endblock %}
+{% block title %}Extreme Predictive Suite & Prediction Review - QuantCore{% endblock %}
 {% block content %}
-<div class="flex flex-wrap gap-4 mb-6">
+
+<!-- Header & Control Bar -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
     <div>
-        <label class="block text-sm font-medium text-gray-400 mb-2">Symbol</label>
-        <select id="symbol-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
-            <option value="">Loading...</option>
-        </select>
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                <span class="text-purple-400">⚡ Extreme Predictive Analytics</span>
+                <span class="text-xs px-2.5 py-1 rounded bg-purple-900/60 border border-purple-500/40 text-purple-300 font-mono">INSTITUTIONAL SUITE</span>
+            </h1>
+        </div>
+        <p class="text-gray-400 text-sm mt-1">Multi-model ensemble forecasting (Ornstein-Uhlenbeck + Momentum + Monte Carlo), Liquidity Volume Profiles, and Walk-Forward Prediction Review Auditing.</p>
     </div>
-    <div>
-        <label class="block text-sm font-medium text-gray-400 mb-2">Interval</label>
-        <select id="interval-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
-            <option value="1m">1 Minute</option>
-            <option value="5m">5 Minutes</option>
-            <option value="15m">15 Minutes</option>
-            <option value="30m">30 Minutes</option>
-            <option value="1h">1 Hour</option>
-            <option value="1d" selected>1 Day</option>
-            <option value="1wk">1 Week</option>
-        </select>
-    </div>
-    <div>
-        <label class="block text-sm font-medium text-gray-400 mb-2">Historical Context</label>
-        <select id="period-select" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 w-48">
-            <option value="1y" selected>1 Year</option>
-        </select>
+
+    <!-- Parameter Selectors -->
+    <div class="flex flex-wrap gap-3 items-center bg-gray-800/80 p-2.5 rounded-xl border border-gray-700 shadow-lg">
+        <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Symbol</label>
+            <select id="symbol-select" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white font-bold focus:border-purple-500 focus:outline-none w-32">
+                <option value="">Loading...</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Timeframe</label>
+            <select id="interval-select" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white font-medium focus:border-purple-500 focus:outline-none">
+                <option value="1m">1 Min</option>
+                <option value="5m">5 Min</option>
+                <option value="15m">15 Min</option>
+                <option value="30m">30 Min</option>
+                <option value="1h">1 Hour</option>
+                <option value="1d" selected>1 Day</option>
+                <option value="1wk">1 Week</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Lookback</label>
+            <select id="period-select" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white font-medium focus:border-purple-500 focus:outline-none">
+                <option value="1mo">1 Month</option>
+                <option value="3mo">3 Months</option>
+                <option value="6mo">6 Months</option>
+                <option value="1y" selected>1 Year</option>
+                <option value="2y">2 Years</option>
+                <option value="5y">5 Years</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Horizon Steps</label>
+            <select id="horizon-select" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white font-medium focus:border-purple-500 focus:outline-none">
+                <option value="5">5 Steps (Quick)</option>
+                <option value="10" selected>10 Steps (Standard)</option>
+                <option value="15">15 Steps (Extended)</option>
+                <option value="20">20 Steps (Macro)</option>
+            </select>
+        </div>
+        <div class="pt-4">
+            <button onclick="refreshAll()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-1.5 rounded-lg text-sm transition-all shadow-md flex items-center gap-1.5">
+                <span>🔄</span> Run Analytics
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Current Price</h3>
-        <p class="text-3xl font-bold text-blue-400" id="current-price">-</p>
+<!-- Executive Status & Metrics Bar -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+    <!-- Current Price -->
+    <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-between">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Current Price</span>
+        <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-2xl font-black text-white" id="kpi-price">-</span>
+            <span class="text-xs font-semibold" id="kpi-price-change">-</span>
+        </div>
+        <span class="text-[11px] text-gray-400 mt-1" id="kpi-data-source">Live Feed</span>
     </div>
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Recommendation</h3>
-        <p class="text-3xl font-bold" id="recommendation">-</p>
+
+    <!-- Quantitative Regime -->
+    <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-between">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Market Regime</span>
+        <div class="mt-1">
+            <span class="px-2.5 py-1 rounded-full text-xs font-extrabold uppercase inline-block" id="kpi-regime-badge">ANALYZING</span>
+        </div>
+        <span class="text-[11px] text-gray-400 truncate mt-1" id="kpi-regime-desc">Detecting...</span>
     </div>
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Z-Score</h3>
-        <p class="text-3xl font-bold text-yellow-400" id="zscore">-</p>
+
+    <!-- Directional Bias & Action -->
+    <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-between">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Algorithmic Action</span>
+        <div class="mt-1">
+            <span class="text-xl font-black" id="kpi-action">-</span>
+        </div>
+        <span class="text-[11px] text-gray-400 mt-1" id="kpi-bias">Bias: -</span>
     </div>
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Volatility</h3>
-        <p class="text-3xl font-bold text-purple-400" id="volatility">-</p>
+
+    <!-- Conviction Score Gauge -->
+    <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-between">
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Conviction</span>
+            <span class="text-xs font-bold text-purple-400" id="kpi-conviction-pct">0%</span>
+        </div>
+        <div class="w-full bg-gray-900 rounded-full h-2.5 my-2 overflow-hidden border border-gray-700">
+            <div id="kpi-conviction-bar" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <span class="text-[11px] text-gray-400" id="kpi-rr">Risk/Reward: -</span>
+    </div>
+
+    <!-- Hurst Exponent -->
+    <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-between">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Hurst Exponent (H)</span>
+        <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-2xl font-black text-yellow-400" id="kpi-hurst">-</span>
+        </div>
+        <span class="text-[11px] text-gray-400 mt-1" id="kpi-hurst-type">Analyzing persistence...</span>
+    </div>
+
+    <!-- Volatility & ATR -->
+    <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-between">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Volatility & ATR</span>
+        <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-xl font-black text-blue-400" id="kpi-vol">-</span>
+        </div>
+        <span class="text-[11px] text-gray-400 mt-1" id="kpi-atr">ATR: -</span>
     </div>
 </div>
 
-<div class="bg-gray-800 rounded-lg p-6 mb-6">
-    <h2 class="text-xl font-bold mb-4">Predictive Horizon (Historical Anchor + Future Forecast)</h2>
-    <div id="horizon-chart" style="height: 500px;"></div>
+<!-- Tabs Navigation -->
+<div class="border-b border-gray-700 mb-6 flex flex-wrap gap-2">
+    <button onclick="switchTab('forecast')" id="tab-btn-forecast" class="px-5 py-2.5 font-bold text-sm border-b-2 border-purple-500 text-white flex items-center gap-2 transition-colors">
+        <span>🔮</span> Predictive Horizon & Cones
+    </button>
+    <button onclick="switchTab('review')" id="tab-btn-review" class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 transition-colors">
+        <span>📊</span> Prediction Review & Accuracy Audit
+    </button>
+    <button onclick="switchTab('technical')" id="tab-btn-technical" class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 transition-colors">
+        <span>🔬</span> Volume Profile & Liquidity Matrix
+    </button>
+    <button onclick="switchTab('screener')" id="tab-btn-screener" class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 transition-colors">
+        <span>🛰️</span> Cross-Asset Predictive Screener
+    </button>
 </div>
 
-<div class="bg-gray-800 rounded-lg p-6">
-    <h2 class="text-xl font-bold mb-4">Detailed Forecast Matrix</h2>
-    <div id="predictions-table"></div>
+<!-- ========================================== -->
+<!-- TAB 1: PREDICTIVE HORIZON & PROBABILITY CONES -->
+<!-- ========================================== -->
+<div id="tab-forecast" class="tab-content">
+    <!-- Main Interactive Horizon Chart -->
+    <div class="bg-gray-800/90 rounded-xl p-5 border border-gray-700 shadow-xl mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span>Monte Carlo Probabilistic Progression Cone</span>
+                    <span class="text-xs bg-purple-900/60 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded">1,000 Path Simulation</span>
+                </h2>
+                <p class="text-xs text-gray-400">Combines Ornstein-Uhlenbeck mean-reversion gravity, momentum drift, dynamic VWAP bands, and 50%/90% confidence cones.</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-purple-500/30 border border-purple-500"></span> 90% Cone</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-indigo-500/40 border border-indigo-500"></span> 50% Cone</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-yellow-400"></span> Consensus Path</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-cyan-400 border border-dashed"></span> OU Gravity</span>
+            </div>
+        </div>
+        <div id="horizon-chart" style="height: 540px;"></div>
+    </div>
+
+    <!-- Multi-Scenario Progression Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <!-- Bull Scenario -->
+        <div class="bg-gray-800/90 rounded-xl p-5 border border-green-500/30 shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-green-400 flex items-center gap-1.5">
+                    <span>🚀</span> Bull Breakout Case
+                </span>
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-green-900/80 text-green-300 border border-green-500/40" id="bull-prob">0%</span>
+            </div>
+            <div class="text-2xl font-black text-white mt-1" id="bull-target">$0.00</div>
+            <p class="text-xs text-green-400 font-semibold mt-0.5" id="bull-move">+0.00% expected</p>
+            <p class="text-[11px] text-gray-400 mt-2">85th percentile expansion target. Triggered upon breach of upper Keltner/Bollinger resistance.</p>
+        </div>
+
+        <!-- Base Scenario -->
+        <div class="bg-gray-800/90 rounded-xl p-5 border border-yellow-500/30 shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-yellow-400 flex items-center gap-1.5">
+                    <span>🎯</span> Base Consensus Case
+                </span>
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-yellow-900/80 text-yellow-300 border border-yellow-500/40" id="base-prob">0%</span>
+            </div>
+            <div class="text-2xl font-black text-white mt-1" id="base-target">$0.00</div>
+            <p class="text-xs text-yellow-400 font-semibold mt-0.5" id="base-move">+0.00% expected</p>
+            <p class="text-[11px] text-gray-400 mt-2">Median simulation expectation blending momentum persistence with volume gravity attraction.</p>
+        </div>
+
+        <!-- Bear Scenario -->
+        <div class="bg-gray-800/90 rounded-xl p-5 border border-red-500/30 shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-red-500/10 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                    <span>⚠️</span> Bear Breakdown Case
+                </span>
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-red-900/80 text-red-300 border border-red-500/40" id="bear-prob">0%</span>
+            </div>
+            <div class="text-2xl font-black text-white mt-1" id="bear-target">$0.00</div>
+            <p class="text-xs text-red-400 font-semibold mt-0.5" id="bear-move">-0.00% expected</p>
+            <p class="text-[11px] text-gray-400 mt-2">15th percentile drawdown floor. Downside support failure or severe mean-reverting flush.</p>
+        </div>
+    </div>
+
+    <!-- Trade Execution Blueprint & Multi-Step Projection Table -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Blueprint Card -->
+        <div class="bg-gray-800/90 rounded-xl p-5 border border-purple-500/40 shadow-xl">
+            <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
+                <h3 class="text-base font-bold text-purple-300 flex items-center gap-2">
+                    <span>📋</span> Actionable Trade Blueprint
+                </h3>
+                <span class="text-xs font-extrabold px-2.5 py-1 rounded bg-purple-900/80 text-purple-200 border border-purple-500/40" id="bp-action">-</span>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Entry Zone</span>
+                    <span class="font-mono font-bold text-white" id="bp-entry">-</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Stop Loss (Invalidation)</span>
+                    <span class="font-mono font-bold text-red-400" id="bp-stop">-</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Target 1 (1.5x ATR)</span>
+                    <span class="font-mono font-bold text-green-400" id="bp-t1">-</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Target 2 (3.0x ATR)</span>
+                    <span class="font-mono font-bold text-emerald-400" id="bp-t2">-</span>
+                </div>
+                <div class="flex justify-between items-center border-t border-gray-700/60 pt-2">
+                    <span class="text-gray-400 font-semibold">Risk / Reward Ratio</span>
+                    <span class="font-mono font-black text-yellow-400 text-base" id="bp-rr">-</span>
+                </div>
+            </div>
+
+            <!-- Quick Action Scalp Button -->
+            <div class="mt-5 pt-4 border-t border-gray-700">
+                <button onclick="executeActionBlueprint()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm transition-all shadow-md flex items-center justify-center gap-2">
+                    <span>⚡</span> Send Setup to Paper Desk
+                </button>
+                <div id="scalp-msg" class="text-center text-xs mt-2 text-gray-400 h-4"></div>
+            </div>
+        </div>
+
+        <!-- Projection Steps Table -->
+        <div class="lg:col-span-2 bg-gray-800/90 rounded-xl p-5 border border-gray-700 shadow-xl overflow-hidden">
+            <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+                <span>🔢</span> Multi-Step Quantitative Trajectory Matrix
+            </h3>
+            <div class="overflow-x-auto max-h-72 overflow-y-auto">
+                <table class="w-full text-xs text-left">
+                    <thead class="text-gray-400 uppercase bg-gray-900/80 sticky top-0 border-b border-gray-700">
+                        <tr>
+                            <th class="px-3 py-2">Step</th>
+                            <th class="px-3 py-2">Projected Date</th>
+                            <th class="px-3 py-2 text-right">Expected Price</th>
+                            <th class="px-3 py-2 text-right">Expected Move</th>
+                            <th class="px-3 py-2 text-right">50% Cone Range</th>
+                            <th class="px-3 py-2 text-right">90% Cone Range</th>
+                            <th class="px-3 py-2 text-center">Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trajectory-table" class="divide-y divide-gray-700/60 font-mono">
+                        <tr><td colspan="7" class="text-center py-6 text-gray-500">Loading forecast steps...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- ========================================== -->
+<!-- TAB 2: PREDICTION REVIEW & ACCURACY AUDIT -->
+<!-- ========================================== -->
+<div id="tab-review" class="tab-content hidden">
+    <!-- Audit Scorecard -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Directional Hit Rate</span>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-green-400" id="rev-hit-rate">0.0%</span>
+            </div>
+            <span class="text-[11px] text-gray-400 mt-1">Target: > 55.0% for statistical edge</span>
+        </div>
+
+        <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mean Absolute Error (MAE)</span>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-blue-400" id="rev-mae">$0.00</span>
+            </div>
+            <span class="text-[11px] text-gray-400 mt-1" id="rev-mape">MAPE: 0.0%</span>
+        </div>
+
+        <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Root Mean Squared Error</span>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-purple-400" id="rev-rmse">$0.00</span>
+            </div>
+            <span class="text-[11px] text-gray-400 mt-1">Penalizes large outlier misses</span>
+        </div>
+
+        <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Alpha vs Buy & Hold</span>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-emerald-400" id="rev-alpha">+0.0%</span>
+            </div>
+            <span class="text-[11px] text-gray-400 mt-1" id="rev-strat-ret">Strategy Return: 0.0%</span>
+        </div>
+
+        <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Calibration Grade</span>
+            <div class="mt-1">
+                <span class="px-2.5 py-1 rounded text-sm font-extrabold bg-blue-900/80 text-blue-300 border border-blue-500/40" id="rev-grade">EVALUATING</span>
+            </div>
+            <span class="text-[11px] text-gray-400 mt-1" id="rev-samples">0 walk-forward windows</span>
+        </div>
+    </div>
+
+    <!-- Walk-Forward Historical Overlay Chart -->
+    <div class="bg-gray-800/90 rounded-xl p-5 border border-gray-700 shadow-xl mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span>Historical Walk-Forward Prediction Overlay</span>
+                    <span class="text-xs bg-blue-900/60 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded">Visual Truth Audit</span>
+                </h2>
+                <p class="text-xs text-gray-400">Visualizes past generated forecasts against actual realized prices. Allows traders to visually audit whether forecasts led the market or lagged.</p>
+            </div>
+        </div>
+        <div id="review-chart" style="height: 480px;"></div>
+    </div>
+
+    <!-- Walk-Forward Trade Log Table -->
+    <div class="bg-gray-800/90 rounded-xl p-5 border border-gray-700 shadow-xl">
+        <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span>📋</span> Out-of-Sample Prediction Audit Log (Recent Samples)
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+                <thead class="text-gray-400 uppercase bg-gray-900/80 border-b border-gray-700">
+                    <tr>
+                        <th class="px-3 py-2">Anchor Bar</th>
+                        <th class="px-3 py-2 text-right">Anchor Price</th>
+                        <th class="px-3 py-2 text-right">Forecast (T+5)</th>
+                        <th class="px-3 py-2 text-right">Realized (T+5)</th>
+                        <th class="px-3 py-2 text-center">Predicted Bias</th>
+                        <th class="px-3 py-2 text-center">Realized Move</th>
+                        <th class="px-3 py-2 text-center">Hit Verdict</th>
+                        <th class="px-3 py-2 text-right">Abs Error</th>
+                        <th class="px-3 py-2 text-right">% Error</th>
+                    </tr>
+                </thead>
+                <tbody id="audit-table" class="divide-y divide-gray-700/60 font-mono">
+                    <tr><td colspan="9" class="text-center py-6 text-gray-500">Running walk-forward prediction audit...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- TAB 3: VOLUME PROFILE & LIQUIDITY MATRIX -->
+<!-- ========================================== -->
+<div id="tab-technical" class="tab-content hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Volume Profile Distribution -->
+        <div class="lg:col-span-2 bg-gray-800/90 rounded-xl p-5 border border-gray-700 shadow-xl">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <span>📊</span> Liquidity Volume Profile (POC & Value Area)
+                </h3>
+                <span class="text-xs text-gray-400">Identifies Institutional Accumulation & Liquidity Voids</span>
+            </div>
+            <div id="volume-profile-chart" style="height: 400px;"></div>
+        </div>
+
+        <!-- Liquidity Pivot Levels & Indicators -->
+        <div class="space-y-4">
+            <!-- Key Levels Card -->
+            <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+                <h4 class="text-xs font-extrabold uppercase tracking-wider text-purple-300 mb-3">Institutional Pivot Stack</h4>
+                <div class="space-y-2 text-xs font-mono">
+                    <div class="flex justify-between p-1.5 rounded bg-red-900/20 text-red-300">
+                        <span>Resistance 2 (2x ATR)</span>
+                        <span id="lvl-r2">-</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 rounded bg-red-900/10 text-red-200">
+                        <span>Resistance 1 (1x ATR)</span>
+                        <span id="lvl-r1">-</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 rounded bg-purple-900/30 text-purple-300 font-bold border border-purple-500/30">
+                        <span>Value Area High (VAH)</span>
+                        <span id="lvl-vah">-</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 rounded bg-yellow-900/30 text-yellow-300 font-bold border border-yellow-500/40">
+                        <span>Point of Control (POC)</span>
+                        <span id="lvl-poc">-</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 rounded bg-purple-900/30 text-purple-300 font-bold border border-purple-500/30">
+                        <span>Value Area Low (VAL)</span>
+                        <span id="lvl-val">-</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 rounded bg-green-900/10 text-green-200">
+                        <span>Support 1 (1x ATR)</span>
+                        <span id="lvl-s1">-</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 rounded bg-green-900/20 text-green-300">
+                        <span>Support 2 (2x ATR)</span>
+                        <span id="lvl-s2">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technical Oscillator Readings -->
+            <div class="bg-gray-800/90 rounded-xl p-4 border border-gray-700 shadow">
+                <h4 class="text-xs font-extrabold uppercase tracking-wider text-blue-300 mb-3">Oscillator & Squeeze Matrix</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-gray-900/60 p-2 rounded border border-gray-700">
+                        <span class="text-gray-400 block text-[10px]">TTM Squeeze</span>
+                        <span class="font-bold text-sm" id="tech-squeeze">-</span>
+                    </div>
+                    <div class="bg-gray-900/60 p-2 rounded border border-gray-700">
+                        <span class="text-gray-400 block text-[10px]">Wilder's RSI</span>
+                        <span class="font-bold text-sm" id="tech-rsi">-</span>
+                    </div>
+                    <div class="bg-gray-900/60 p-2 rounded border border-gray-700">
+                        <span class="text-gray-400 block text-[10px]">MACD Momentum</span>
+                        <span class="font-bold text-sm" id="tech-macd">-</span>
+                    </div>
+                    <div class="bg-gray-900/60 p-2 rounded border border-gray-700">
+                        <span class="text-gray-400 block text-[10px]">EMA 9 / 21 / 50</span>
+                        <span class="font-bold text-sm text-green-400" id="tech-ema-stack">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- TAB 4: CROSS-ASSET PREDICTIVE SCREENER -->
+<!-- ========================================== -->
+<div id="tab-screener" class="tab-content hidden">
+    <div class="bg-gray-800/90 rounded-xl p-5 border border-gray-700 shadow-xl">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span>Market-Wide Predictive Screener Leaderboard</span>
+                    <span class="text-xs bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded">All Tracked Equities & Crypto</span>
+                </h2>
+                <p class="text-xs text-gray-400">Ranks all tracked symbols by predictive conviction, expected progression, and risk/reward asymmetry.</p>
+            </div>
+            <button onclick="loadScreener()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition-all shadow">
+                ⚡ Rescan Market
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+                <thead class="text-gray-400 uppercase bg-gray-900/80 border-b border-gray-700">
+                    <tr>
+                        <th class="px-3 py-2.5">Rank</th>
+                        <th class="px-3 py-2.5">Symbol</th>
+                        <th class="px-3 py-2.5 text-right">Price</th>
+                        <th class="px-3 py-2.5">Regime</th>
+                        <th class="px-3 py-2.5 text-center">Action</th>
+                        <th class="px-3 py-2.5 text-center">Conviction</th>
+                        <th class="px-3 py-2.5 text-right">Expected Move</th>
+                        <th class="px-3 py-2.5 text-right">Bull Target</th>
+                        <th class="px-3 py-2.5 text-right">Bear Target</th>
+                        <th class="px-3 py-2.5 text-right">R/R</th>
+                        <th class="px-3 py-2.5 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="screener-table" class="divide-y divide-gray-700/60 font-mono">
+                    <tr><td colspan="11" class="text-center py-8 text-gray-500">Scanning universe...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-let currentSymbol = 'AAPL';
-const intervalPeriodMap = {
-    "1m": ["1d", "5d", "7d"], "5m": ["1d", "5d", "1mo", "2mo"], "15m": ["1d", "5d", "1mo", "2mo"],
-    "30m": ["1d", "5d", "1mo", "2mo"], "1h": ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
-    "1d": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"], "1wk": ["1mo", "3mo", "6mo", "ytd", "1y", "2y", "5y", "max"]
-};
-const periodText = {
-    "1d": "1 Day", "5d": "5 Days", "7d": "7 Days", "1mo": "1 Month", "2mo": "2 Months",
-    "3mo": "3 Months", "6mo": "6 Months", "ytd": "YTD", "1y": "1 Year",
-    "2y": "2 Years", "5y": "5 Years", "max": "Max"
-};
+let currentSymbol = 'SPY';
+let currentData = null;
+let currentAudit = null;
 
-function updatePeriodOptions() {
-    const interval = document.getElementById('interval-select').value;
-    const periodSelect = document.getElementById('period-select');
-    const validPeriods = intervalPeriodMap[interval] || intervalPeriodMap["1d"];
-    const currentPeriod = periodSelect.value;
-    periodSelect.innerHTML = '';
-    validPeriods.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p; opt.text = periodText[p] || p;
-        if (p === currentPeriod) opt.selected = true;
-        periodSelect.appendChild(opt);
+// Tab Switching
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
+        btn.classList.remove('border-purple-500', 'text-white');
+        btn.classList.add('border-transparent', 'text-gray-400');
     });
-    if (!validPeriods.includes(periodSelect.value)) periodSelect.value = validPeriods[validPeriods.length - 1];
+
+    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+    activeBtn.classList.remove('border-transparent', 'text-gray-400');
+    activeBtn.classList.add('border-purple-500', 'text-white');
+
+    if (tabId === 'review' && !currentAudit) {
+        loadReview();
+    } else if (tabId === 'screener') {
+        loadScreener();
+    } else if (tabId === 'technical' && currentData) {
+        renderVolumeProfile(currentData.prediction.volume_profile);
+    }
 }
 
+// Load Symbols from API
 async function loadSymbols() {
-    const symbols = await fetch('/api/symbols').then(r => r.json());
-    const select = document.getElementById('symbol-select');
-    select.innerHTML = '';
-    symbols.forEach(s => select.innerHTML += `<option value="${s}" ${s === currentSymbol ? 'selected' : ''}>${s}</option>`);
+    try {
+        const symbols = await fetch('/api/symbols').then(r => r.json());
+        const select = document.getElementById('symbol-select');
+        select.innerHTML = '';
+        symbols.forEach(s => {
+            select.innerHTML += `<option value="${s}" ${s === currentSymbol ? 'selected' : ''}>${s}</option>`;
+        });
+    } catch (e) {
+        console.error("Failed to load symbols:", e);
+    }
 }
 
-async function loadPredictions() {
-    const symbol = document.getElementById('symbol-select').value;
-    const period = document.getElementById('period-select').value;
-    const interval = document.getElementById('interval-select').value;
+// Main Analytics Loader
+async function refreshAll() {
+    const symbol = document.getElementById('symbol-select').value || currentSymbol;
     currentSymbol = symbol;
+    const interval = document.getElementById('interval-select').value;
+    const period = document.getElementById('period-select').value;
+    const horizon = document.getElementById('horizon-select').value;
 
-    const data = await fetch(`/api/predictions/${symbol}?period=${period}&interval=${interval}`).then(r => r.json());
-    if (data.error) { alert(data.error); return; }
+    document.getElementById('kpi-price').textContent = "Loading...";
 
-    document.getElementById('current-price').textContent = `$${data.current_price.toFixed(2)}`;
-    const recEl = document.getElementById('recommendation');
-    recEl.textContent = data.recommendation;
-    recEl.className = `text-3xl font-bold ${data.recommendation === 'BUY' ? 'text-green-400' : data.recommendation === 'SELL' ? 'text-red-400' : 'text-yellow-400'}`;
-    document.getElementById('zscore').textContent = data.zscore.toFixed(2);
-    document.getElementById('volatility').textContent = data.volatility.toFixed(2);
+    try {
+        const res = await fetch(`/api/predictions/advanced/${symbol}?period=${period}&interval=${interval}&horizon=${horizon}`).then(r => r.json());
+        if (res.error) {
+            alert(`Prediction error: ${res.error}`);
+            return;
+        }
+        currentData = res;
+        renderExecutiveKPIs(res);
+        renderHorizonChart(res);
+        renderScenariosAndBlueprint(res);
+        renderTrajectoryTable(res);
+        renderTechnicalMatrix(res);
 
-    if (data.historical && data.predictions) {
-        const h = data.historical;
-        const preds = data.predictions;
+        // Also refresh review if on review tab
+        currentAudit = null;
+        if (!document.getElementById('tab-review').classList.contains('hidden')) {
+            loadReview();
+        }
+    } catch (e) {
+        console.error("Analytics fetch failed:", e);
+    }
+}
 
-        // 1. Prepare Historical Data
-        const histDates = h.dates;
-        const histPrices = h.prices;
-        const histSMA = h.sma_20;
-        const lastHistPrice = histPrices[histPrices.length - 1];
+function renderExecutiveKPIs(data) {
+    const p = data.prediction;
+    const hist = data.historical;
+    const prices = hist.close;
+    const curP = p.current_price;
+    const prevP = prices.length > 1 ? prices[prices.length - 2] : curP;
+    const chgPct = ((curP - prevP) / prevP) * 100.0;
 
-        // 2. Prepare Future Forecast Data
-        const futureLabels = preds.map(p => p.date || `T+${p.day}`);
-        const futurePrices = preds.map(p => p.price);
+    document.getElementById('kpi-price').textContent = `$${curP.toFixed(2)}`;
+    const chgEl = document.getElementById('kpi-price-change');
+    chgEl.textContent = `${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%`;
+    chgEl.className = `text-xs font-semibold ${chgPct >= 0 ? 'text-green-400' : 'text-red-400'}`;
 
-        // Confidence Bands (using volatility and time horizon)
-        const vol = data.volatility / 100; // Convert to decimal
-        const futureUpper = preds.map(p => p.price * (1 + (vol * p.day * 0.5)));
-        const futureLower = preds.map(p => p.price * (1 - (vol * p.day * 0.5)));
+    // Regime Badge
+    const regEl = document.getElementById('kpi-regime-badge');
+    regEl.textContent = p.regime.replace('_', ' ');
+    if (p.regime.includes('BULL')) regEl.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold uppercase inline-block bg-green-900/80 text-green-300 border border-green-500/40';
+    else if (p.regime.includes('BEAR')) regEl.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold uppercase inline-block bg-red-900/80 text-red-300 border border-red-500/40';
+    else if (p.regime.includes('SQUEEZE')) regEl.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold uppercase inline-block bg-yellow-900/80 text-yellow-300 border border-yellow-500/40';
+    else if (p.regime.includes('REVERT')) regEl.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold uppercase inline-block bg-purple-900/80 text-purple-300 border border-purple-500/40';
+    else regEl.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold uppercase inline-block bg-gray-700 text-gray-300 border border-gray-600';
 
-        // 3. Merge Axes
-        const allDates = [...histDates, ...futureLabels];
-        const allPrices = [...histPrices, ...Array(preds.length).fill(null)];
-        const allSMA = [...histSMA, ...Array(preds.length).fill(null)];
+    document.getElementById('kpi-regime-desc').textContent = p.regime_description;
 
-        // Forecast line must connect to the last historical point
-        const forecastLine = [...Array(histDates.length - 1).fill(null), lastHistPrice, ...futurePrices];
-        const upperBand = [...Array(histDates.length - 1).fill(null), lastHistPrice, ...futureUpper];
-        const lowerBand = [...Array(histDates.length - 1).fill(null), lastHistPrice, ...futureLower];
+    // Action
+    const actEl = document.getElementById('kpi-action');
+    actEl.textContent = p.action;
+    actEl.className = `text-xl font-black ${p.action.includes('LONG') ? 'text-green-400' : p.action.includes('SHORT') ? 'text-red-400' : 'text-yellow-400'}`;
+    document.getElementById('kpi-bias').textContent = `Bias: ${p.directional_bias.replace('_', ' ')}`;
 
-        // 4. Plotly Traces
-        const traces = [
-            { x: allDates, y: allPrices, type: 'scatter', mode: 'lines', name: 'Historical Price', line: {color: '#3b82f6', width: 2} },
-            { x: allDates, y: allSMA, type: 'scatter', mode: 'lines', name: 'SMA 20', line: {color: '#10b981', width: 1, dash: 'dash'} },
-            { x: allDates, y: upperBand, type: 'scatter', mode: 'lines', line: {width: 0}, showlegend: false, hoverinfo: 'skip' },
-            { x: allDates, y: lowerBand, type: 'scatter', mode: 'lines', line: {width: 0}, fill: 'tonexty', fillcolor: 'rgba(139, 92, 246, 0.2)', name: 'Confidence Cone' },
-            { x: allDates, y: forecastLine, type: 'scatter', mode: 'lines+markers', name: 'Mean-Reversion Projection', line: {color: '#8b5cf6', width: 3, dash: 'dot'}, marker: {size: 8, color: '#8b5cf6'} }
-        ];
+    // Conviction
+    document.getElementById('kpi-conviction-pct').textContent = `${p.conviction_score}%`;
+    document.getElementById('kpi-conviction-bar').style.width = `${p.conviction_score}%`;
+    document.getElementById('kpi-rr').textContent = `Risk/Reward: ${p.trade_blueprint.risk_reward_ratio}:1`;
 
-        // Y-Axis scaling
-        const allY = [...histPrices, ...histSMA, ...futurePrices, ...futureUpper, ...futureLower].filter(v => v != null && v > 0);
-        const minY = Math.min(...allY);
-        const maxY = Math.max(...allY);
-        const yPadding = (maxY - minY) * 0.10;
+    // Hurst
+    document.getElementById('kpi-hurst').textContent = p.hurst_exponent.toFixed(3);
+    const hType = p.hurst_exponent > 0.55 ? 'Persistent Trend' : (p.hurst_exponent < 0.45 ? 'Mean Reverting' : 'Geometric Random Walk');
+    document.getElementById('kpi-hurst-type').textContent = hType;
 
-        const layout = {
-            paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
-            xaxis: { gridcolor: '#374151', autorange: true, rangeslider: { visible: false } },
-            yaxis: { gridcolor: '#374151', range: [minY - yPadding, maxY + yPadding], rangemode: 'normal' },
-            margin: {t: 20, b: 40, l: 60, r: 20}, legend: {orientation: 'h', y: 1.1, x: 0.5}, hovermode: 'x unified'
-        };
+    // Vol & ATR
+    document.getElementById('kpi-vol').textContent = `${p.annualized_volatility.toFixed(1)}% Ann.`;
+    document.getElementById('kpi-atr').textContent = `ATR: $${p.atr.toFixed(2)}`;
+}
 
-        Plotly.newPlot('horizon-chart', traces, layout, {responsive: true});
+function renderHorizonChart(data) {
+    const hist = data.historical;
+    const p = data.prediction;
+    const cone = p.monte_carlo_cone;
+
+    const histDates = hist.dates;
+    const histPrices = hist.close;
+    const futureDates = data.future_dates;
+
+    const allDates = [...histDates, ...futureDates];
+    const lastHistPrice = histPrices[histPrices.length - 1];
+
+    // Padding arrays for historical segment
+    const prefixNulls = Array(histDates.length - 1).fill(null);
+
+    // Monte Carlo Cones
+    const trace_p95 = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.p95.slice(1)],
+        type: 'scatter', mode: 'lines', line: {width: 0}, showlegend: false, hoverinfo: 'skip'
+    };
+    const trace_p5 = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.p5.slice(1)],
+        type: 'scatter', mode: 'lines', line: {width: 0}, fill: 'tonexty',
+        fillcolor: 'rgba(147, 51, 234, 0.15)', name: '90% Prob. Cone', hoverinfo: 'skip'
+    };
+
+    const trace_p75 = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.p75.slice(1)],
+        type: 'scatter', mode: 'lines', line: {width: 0}, showlegend: false, hoverinfo: 'skip'
+    };
+    const trace_p25 = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.p25.slice(1)],
+        type: 'scatter', mode: 'lines', line: {width: 0}, fill: 'tonexty',
+        fillcolor: 'rgba(79, 70, 229, 0.3)', name: '50% Inner Cone', hoverinfo: 'skip'
+    };
+
+    // Paths
+    const trace_base = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.base_path.slice(1)],
+        type: 'scatter', mode: 'lines+markers', name: 'Consensus Expected Path',
+        line: {color: '#facc15', width: 3}, marker: {size: 5, color: '#facc15'}
+    };
+
+    const trace_ou = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.ou_path.slice(1)],
+        type: 'scatter', mode: 'lines', name: 'OU Reversion Gravity',
+        line: {color: '#22d3ee', width: 1.5, dash: 'dot'}
+    };
+
+    const trace_mom = {
+        x: allDates, y: [...prefixNulls, lastHistPrice, ...cone.momentum_path.slice(1)],
+        type: 'scatter', mode: 'lines', name: 'Momentum Drift Vector',
+        line: {color: '#ec4899', width: 1.5, dash: 'dash'}
+    };
+
+    // Historical Price (Candlestick or Line)
+    const trace_hist = {
+        x: histDates,
+        open: hist.open, high: hist.high, low: hist.low, close: hist.close,
+        type: 'candlestick', name: 'Price History',
+        increasing: {line: {color: '#22c55e'}}, decreasing: {line: {color: '#ef4444'}}
+    };
+
+    const traces = [trace_p95, trace_p5, trace_p75, trace_p25, trace_ou, trace_mom, trace_base, trace_hist];
+
+    const yMin = Math.min(...cone.p5, ...hist.low) * 0.98;
+    const yMax = Math.max(...cone.p95, ...hist.high) * 1.02;
+
+    const layout = {
+        paper_bgcolor: '#111827', plot_bgcolor: '#111827', font: {color: '#9ca3af'},
+        xaxis: { gridcolor: '#1f2937', rangeslider: {visible: false} },
+        yaxis: { gridcolor: '#1f2937', range: [yMin, yMax], tickprefix: '$' },
+        margin: {t: 20, b: 40, l: 60, r: 20},
+        legend: {orientation: 'h', y: 1.08, x: 0.05},
+        hovermode: 'x unified'
+    };
+
+    Plotly.newPlot('horizon-chart', traces, layout, {responsive: true});
+}
+
+function renderScenariosAndBlueprint(data) {
+    const p = data.prediction;
+    const sc = p.scenarios;
+    const bp = p.trade_blueprint;
+
+    // Bull
+    document.getElementById('bull-target').textContent = `$${sc.bull.target_price.toFixed(2)}`;
+    document.getElementById('bull-move').textContent = `${sc.bull.expected_move_pct >= 0 ? '+' : ''}${sc.bull.expected_move_pct.toFixed(2)}%`;
+    document.getElementById('bull-prob').textContent = `${sc.bull.probability_pct}% Prob`;
+
+    // Base
+    document.getElementById('base-target').textContent = `$${sc.base.target_price.toFixed(2)}`;
+    document.getElementById('base-move').textContent = `${sc.base.expected_move_pct >= 0 ? '+' : ''}${sc.base.expected_move_pct.toFixed(2)}%`;
+    document.getElementById('base-prob').textContent = `${sc.base.probability_pct}% Prob`;
+
+    // Bear
+    document.getElementById('bear-target').textContent = `$${sc.bear.target_price.toFixed(2)}`;
+    document.getElementById('bear-move').textContent = `${sc.bear.expected_move_pct.toFixed(2)}%`;
+    document.getElementById('bear-prob').textContent = `${sc.bear.probability_pct}% Prob`;
+
+    // Blueprint
+    document.getElementById('bp-action').textContent = bp.recommended_action;
+    document.getElementById('bp-entry').textContent = bp.entry_zone;
+    document.getElementById('bp-stop').textContent = `$${bp.stop_loss.toFixed(2)}`;
+    document.getElementById('bp-t1').textContent = `$${bp.target_1.toFixed(2)}`;
+    document.getElementById('bp-t2').textContent = `$${bp.target_2.toFixed(2)}`;
+    document.getElementById('bp-rr').textContent = `${bp.risk_reward_ratio}:1`;
+}
+
+function renderTrajectoryTable(data) {
+    const tbody = document.getElementById('trajectory-table');
+    tbody.innerHTML = '';
+    const steps = data.prediction.forecast_steps;
+
+    steps.forEach(s => {
+        const moveClass = s.pct_change >= 0 ? 'text-green-400' : 'text-red-400';
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-800/50 transition-colors">
+                <td class="px-3 py-2 text-purple-400 font-bold">T+${s.step}</td>
+                <td class="px-3 py-2 text-gray-300">${s.date || '-'}</td>
+                <td class="px-3 py-2 text-right font-bold text-white">$${s.expected_price.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-bold ${moveClass}">${s.pct_change >= 0 ? '+' : ''}${s.pct_change.toFixed(2)}%</td>
+                <td class="px-3 py-2 text-right text-indigo-300">$${s.lower_50_cone.toFixed(2)} - $${s.upper_50_cone.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right text-purple-300">$${s.lower_90_cone.toFixed(2)} - $${s.upper_90_cone.toFixed(2)}</td>
+                <td class="px-3 py-2 text-center text-yellow-400">${(s.confidence * 100).toFixed(0)}%</td>
+            </tr>
+        `;
+    });
+}
+
+function renderTechnicalMatrix(data) {
+    const p = data.prediction;
+    const kl = p.key_levels;
+    const ti = p.technical_indicators;
+
+    document.getElementById('lvl-r2').textContent = `$${kl.resistance_2.toFixed(2)}`;
+    document.getElementById('lvl-r1').textContent = `$${kl.resistance_1.toFixed(2)}`;
+    document.getElementById('lvl-vah').textContent = `$${kl.vah.toFixed(2)}`;
+    document.getElementById('lvl-poc').textContent = `$${kl.poc.toFixed(2)}`;
+    document.getElementById('lvl-val').textContent = `$${kl.val.toFixed(2)}`;
+    document.getElementById('lvl-s1').textContent = `$${kl.support_1.toFixed(2)}`;
+    document.getElementById('lvl-s2').textContent = `$${kl.support_2.toFixed(2)}`;
+
+    // Technicals
+    const sqEl = document.getElementById('tech-squeeze');
+    sqEl.textContent = ti.ttm_squeeze ? "🔴 SQUEEZE ACTIVE" : "🟢 SQUEEZE FIRED / EXPANDING";
+    sqEl.className = `font-bold text-sm ${ti.ttm_squeeze ? 'text-yellow-400' : 'text-green-400'}`;
+
+    document.getElementById('tech-rsi').textContent = `${ti.rsi} (${ti.rsi > 70 ? 'Overbought' : (ti.rsi < 30 ? 'Oversold' : 'Neutral')})`;
+    document.getElementById('tech-macd').textContent = `${ti.macd_hist > 0 ? '+' : ''}${ti.macd_hist.toFixed(3)}`;
+
+    const isBullStack = ti.ema_9 > ti.ema_21 && ti.ema_21 > ti.ema_50;
+    const isBearStack = ti.ema_9 < ti.ema_21 && ti.ema_21 < ti.ema_50;
+    document.getElementById('tech-ema-stack').textContent = isBullStack ? "Bullish Stack (9>21>50)" : (isBearStack ? "Bearish Stack (9<21<50)" : "Mixed Moving Averages");
+}
+
+function renderVolumeProfile(vp) {
+    if (!vp || !vp.profile || vp.profile.length === 0) return;
+
+    const prices = vp.profile.map(p => p.price);
+    const volumes = vp.profile.map(p => p.volume);
+    const colors = vp.profile.map(p => p.is_poc ? '#facc15' : (p.in_value_area ? '#a855f7' : '#4b5563'));
+
+    const trace = {
+        y: prices, x: volumes, type: 'bar', orientation: 'h',
+        marker: {color: colors},
+        hoverinfo: 'x+y'
+    };
+
+    const layout = {
+        paper_bgcolor: '#111827', plot_bgcolor: '#111827', font: {color: '#9ca3af'},
+        xaxis: { gridcolor: '#1f2937', title: 'Traded Volume' },
+        yaxis: { gridcolor: '#1f2937', title: 'Price Level ($)' },
+        margin: {t: 10, b: 40, l: 60, r: 20}
+    };
+
+    Plotly.newPlot('volume-profile-chart', [trace], layout, {responsive: true});
+}
+
+// Prediction Review Loader
+async function loadReview() {
+    const symbol = currentSymbol;
+    const interval = document.getElementById('interval-select').value;
+    const period = document.getElementById('period-select').value;
+
+    try {
+        const audit = await fetch(`/api/predictions/review/${symbol}?period=${period}&interval=${interval}&bars=40`).then(r => r.json());
+        if (audit.error) {
+            console.warn("Audit error:", audit.error);
+            return;
+        }
+        currentAudit = audit;
+
+        // Scorecard
+        document.getElementById('rev-hit-rate').textContent = `${audit.directional_hit_rate_pct.toFixed(1)}%`;
+        document.getElementById('rev-mae').textContent = `$${audit.mae.toFixed(2)}`;
+        document.getElementById('rev-mape').textContent = `MAPE: ${audit.mape_pct.toFixed(2)}%`;
+        document.getElementById('rev-rmse').textContent = `$${audit.rmse.toFixed(2)}`;
+
+        const comp = audit.performance_comparison;
+        const alpha = comp.alpha_over_benchmark_pct;
+        const alphaEl = document.getElementById('rev-alpha');
+        alphaEl.textContent = `${alpha >= 0 ? '+' : ''}${alpha.toFixed(1)}%`;
+        alphaEl.className = `text-2xl font-black ${alpha >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        document.getElementById('rev-strat-ret').textContent = `Strategy: ${comp.strategy_cumulative_return_pct.toFixed(1)}% | B&H: ${comp.buy_and_hold_return_pct.toFixed(1)}%`;
+
+        document.getElementById('rev-grade').textContent = audit.model_grade;
+        document.getElementById('rev-samples').textContent = `${audit.total_evaluations} walk-forward windows`;
+
+        // Audit Table
+        const tbody = document.getElementById('audit-table');
+        tbody.innerHTML = '';
+        audit.recent_audit_samples.forEach(s => {
+            const hitClass = s.hit ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-800/50 transition-colors">
+                    <td class="px-3 py-2 text-gray-400">#${s.bar_index}</td>
+                    <td class="px-3 py-2 text-right">$${s.anchor_price.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right font-bold text-purple-300">$${s.predicted_price.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right font-bold text-white">$${s.actual_price.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-center text-xs">${s.predicted_dir}</td>
+                    <td class="px-3 py-2 text-center text-xs">${s.actual_dir}</td>
+                    <td class="px-3 py-2 text-center ${hitClass}">${s.hit ? 'PASS ✔' : 'FAIL ✘'}</td>
+                    <td class="px-3 py-2 text-right font-mono">$${s.abs_error.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right font-mono">${s.pct_error.toFixed(2)}%</td>
+                </tr>
+            `;
+        });
+
+        // Review Chart: Visual Overlay of Realized Price vs Past Forecast Lines
+        renderReviewChart(audit);
+    } catch (e) {
+        console.error("Failed to load review:", e);
+    }
+}
+
+function renderReviewChart(audit) {
+    const overlays = audit.historical_forecast_overlays;
+    if (!overlays || overlays.length === 0) return;
+
+    const traces = [];
+
+    // Historical overlays
+    overlays.forEach((ov, idx) => {
+        // Actual path trace
+        traces.push({
+            x: ov.date_labels, y: ov.actual_path,
+            type: 'scatter', mode: 'lines+markers',
+            name: `Realized Window ${idx+1}`,
+            line: {color: '#94a3b8', width: 2},
+            marker: {size: 4}
+        });
+
+        // Predicted path trace
+        traces.push({
+            x: ov.date_labels, y: ov.predicted_path,
+            type: 'scatter', mode: 'lines+markers',
+            name: `Forecast ${idx+1} (${ov.hit ? 'Hit ✔' : 'Miss ✘'})`,
+            line: {color: ov.hit ? '#22c55e' : '#ef4444', width: 2, dash: 'dot'},
+            marker: {size: 5}
+        });
+    });
+
+    const layout = {
+        paper_bgcolor: '#111827', plot_bgcolor: '#111827', font: {color: '#9ca3af'},
+        xaxis: { gridcolor: '#1f2937' },
+        yaxis: { gridcolor: '#1f2937', tickprefix: '$' },
+        margin: {t: 20, b: 40, l: 60, r: 20},
+        hovermode: 'x unified'
+    };
+
+    Plotly.newPlot('review-chart', traces, layout, {responsive: true});
+}
+
+// Screener Loader
+async function loadScreener() {
+    const tbody = document.getElementById('screener-table');
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-purple-400">Scanning full market universe with ensemble models...</td></tr>';
+
+    try {
+        const items = await fetch('/api/predictions/screener?interval=1d&period=1y').then(r => r.json());
+        if (!items || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-gray-500">No screener results available.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        items.forEach((it, idx) => {
+            const actColor = it.action.includes('LONG') ? 'text-green-400' : (it.action.includes('SHORT') ? 'text-red-400' : 'text-yellow-400');
+            const moveColor = it.expected_move_pct >= 0 ? 'text-green-400' : 'text-red-400';
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-800/60 transition-colors cursor-pointer" onclick="selectSymbol('${it.symbol}')">
+                    <td class="px-3 py-2.5 text-gray-400 font-bold">#${idx + 1}</td>
+                    <td class="px-3 py-2.5 font-bold text-white flex items-center gap-1.5">
+                        <span class="text-purple-400">●</span> ${it.symbol}
+                    </td>
+                    <td class="px-3 py-2.5 text-right font-bold text-white">$${it.current_price.toFixed(2)}</td>
+                    <td class="px-3 py-2.5"><span class="px-2 py-0.5 rounded text-[10px] uppercase font-extrabold bg-gray-900 border border-gray-700">${it.regime.replace('_', ' ')}</span></td>
+                    <td class="px-3 py-2.5 text-center font-black ${actColor}">${it.action}</td>
+                    <td class="px-3 py-2.5 text-center font-bold text-purple-300">${it.conviction}%</td>
+                    <td class="px-3 py-2.5 text-right font-bold ${moveColor}">${it.expected_move_pct >= 0 ? '+' : ''}${it.expected_move_pct.toFixed(2)}%</td>
+                    <td class="px-3 py-2.5 text-right text-green-300">$${it.bull_target.toFixed(2)} <span class="text-[10px] text-gray-400">(${it.bull_prob_pct}%)</span></td>
+                    <td class="px-3 py-2.5 text-right text-red-300">$${it.bear_target.toFixed(2)} <span class="text-[10px] text-gray-400">(${it.bear_prob_pct}%)</span></td>
+                    <td class="px-3 py-2.5 text-right font-bold text-yellow-400">${it.risk_reward}:1</td>
+                    <td class="px-3 py-2.5 text-center">
+                        <button onclick="selectSymbol('${it.symbol}')" class="px-2 py-1 rounded text-[11px] bg-purple-600/80 hover:bg-purple-500 text-white font-bold transition-all">Inspect</button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error("Failed to load screener:", e);
+    }
+}
+
+function selectSymbol(sym) {
+    document.getElementById('symbol-select').value = sym;
+    switchTab('forecast');
+    refreshAll();
+}
+
+// Execute Action Blueprint onto Paper Trading Desk
+async function executeActionBlueprint() {
+    if (!currentData) return;
+    const p = currentData.prediction;
+    const bp = p.trade_blueprint;
+    const msgEl = document.getElementById('scalp-msg');
+
+    if (!bp.recommended_action.includes('LONG') && !bp.recommended_action.includes('SHORT')) {
+        msgEl.textContent = "Action is WAIT / RANGE TRADE. No order submitted.";
+        msgEl.className = "text-center text-xs mt-2 text-yellow-400";
+        return;
     }
 
-    // Render Table
-    const tableDiv = document.getElementById('predictions-table');
-    let tableHTML = '<table class="w-full"><thead><tr class="border-b border-gray-700"><th class="text-left py-2">Step</th><th class="text-right py-2">Predicted Price</th><th class="text-right py-2">Change</th><th class="text-right py-2">Confidence</th></tr></thead><tbody>';
-    data.predictions.forEach(p => {
-        const change = ((p.price - data.current_price) / data.current_price * 100);
-        const changeColor = change > 0 ? 'text-green-400' : 'text-red-400';
-        tableHTML += `<tr class="border-b border-gray-700">
-            <td class="py-2">T+${p.day}</td>
-            <td class="py-2 text-right">$${p.price.toFixed(2)}</td>
-            <td class="py-2 text-right ${changeColor}">${change > 0 ? '+' : ''}${change.toFixed(2)}%</td>
-            <td class="py-2 text-right">${(p.confidence * 100).toFixed(0)}%</td>
-        </tr>`;
-    });
-    tableHTML += '</tbody></table>';
-    tableDiv.innerHTML = tableHTML;
+    const side = bp.recommended_action.includes('LONG') ? 'BUY' : 'SELL';
+    msgEl.textContent = "Routing order to Paper Broker...";
+    msgEl.className = "text-center text-xs mt-2 text-blue-400";
+
+    try {
+        const res = await fetch('/api/paper/order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                symbol: currentSymbol,
+                side: side,
+                qty: 50,
+                algo: "VWAP"
+            })
+        }).then(r => r.json());
+
+        if (res.status === 'FILLED') {
+            msgEl.textContent = `✔ FILLED: ${side} 50 ${currentSymbol} @ $${res.fill_price} (Slippage: ${res.slippage_bps} bps)`;
+            msgEl.className = "text-center text-xs mt-2 text-green-400 font-bold";
+        } else {
+            msgEl.textContent = `❌ Rejection: ${res.reason || res.detail || 'Failed'}`;
+            msgEl.className = "text-center text-xs mt-2 text-red-400";
+        }
+    } catch (e) {
+        msgEl.textContent = `Error: ${e.message}`;
+        msgEl.className = "text-center text-xs mt-2 text-red-400";
+    }
 }
 
-document.getElementById('symbol-select').addEventListener('change', loadPredictions);
-document.getElementById('interval-select').addEventListener('change', () => { updatePeriodOptions(); loadPredictions(); });
-document.getElementById('period-select').addEventListener('change', loadPredictions);
-updatePeriodOptions();
-loadSymbols().then(() => loadPredictions());
+document.getElementById('symbol-select').addEventListener('change', refreshAll);
+document.getElementById('interval-select').addEventListener('change', refreshAll);
+document.getElementById('period-select').addEventListener('change', refreshAll);
+document.getElementById('horizon-select').addEventListener('change', refreshAll);
+
+loadSymbols().then(() => refreshAll());
 </script>
 {% endblock %}

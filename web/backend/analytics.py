@@ -21,6 +21,11 @@ from python.quantcore.logging_config import get_logger
 from python.quantcore.data.provider import fetch_history_max, fetch_ohlcv
 
 logger = get_logger(__name__)
+from python.quantcore.research.prediction_suite import (
+    AdvancedPredictor,
+    PredictionReviewer,
+    PredictionScreener,
+)
 
 class AnalyticsEngine:
     @staticmethod
@@ -332,3 +337,110 @@ class AnalyticsEngine:
 
     def get_performance_metrics(self) -> Dict[str, Any]:
         return {"sharpe_ratio": 1.85, "max_drawdown": -8.5, "win_rate": 62.3, "total_trades": 145, "avg_return": 2.1, "volatility": 12.4}
+
+    def get_advanced_predictions(self, symbol: str, period: str = "1y", interval: str = "1d", horizon_steps: int = 10) -> Dict[str, Any]:
+        """
+        Executes the extreme multi-model predictive suite combining OU mean reversion,
+        momentum drift, Monte Carlo probability cones, and volume profile liquidity levels.
+        """
+        try:
+            df = self.fetch_live_data(symbol, period, interval)
+            if df is None or len(df) < 20:
+                # Fallback to 1y daily if intraday history is too thin
+                df = self.fetch_live_data(symbol, "1y", "1d")
+                interval = "1d"
+
+            prediction_data = AdvancedPredictor.analyze_and_predict(
+                df, horizon_steps=horizon_steps, num_simulations=1000
+            )
+
+            # Extract formatted dates and price arrays for charting
+            date_col = "Date" if "Date" in df.columns else ("Datetime" if "Datetime" in df.columns else df.columns[0])
+            dates = []
+            for d in df[date_col]:
+                if hasattr(d, "strftime"):
+                    dates.append(d.strftime("%Y-%m-%d %H:%M") if interval not in ("1d", "1wk", "1mo") else d.strftime("%Y-%m-%d"))
+                else:
+                    dates.append(str(d)[:16])
+
+            # Future dates generation for forecast alignment
+            last_date_str = dates[-1] if dates else None
+            try:
+                if interval in ("1d", "1wk", "1mo"):
+                    last_dt = datetime.strptime(last_date_str, "%Y-%m-%d")
+                else:
+                    last_dt = datetime.strptime(last_date_str, "%Y-%m-%d %H:%M")
+            except Exception:
+                last_dt = datetime.now()
+
+            deltas = {
+                "1m": timedelta(minutes=1), "5m": timedelta(minutes=5), "15m": timedelta(minutes=15),
+                "30m": timedelta(minutes=30), "1h": timedelta(hours=1), "1d": timedelta(days=1),
+                "1wk": timedelta(weeks=1), "1mo": timedelta(days=30),
+            }
+            step_delta = deltas.get(interval, timedelta(days=1))
+
+            future_dates = []
+            for i in range(1, horizon_steps + 1):
+                f_dt = last_dt + (step_delta * i)
+                future_dates.append(f_dt.strftime("%Y-%m-%d %H:%M") if interval not in ("1d", "1wk", "1mo") else f_dt.strftime("%Y-%m-%d"))
+
+            # Attach future dates into forecast_steps
+            for idx, step in enumerate(prediction_data["forecast_steps"]):
+                if idx < len(future_dates):
+                    step["date"] = future_dates[idx]
+
+            return self._sanitize_for_json({
+                "symbol": symbol.upper(),
+                "period": period,
+                "interval": interval,
+                "historical": {
+                    "dates": dates[-60:],
+                    "open": df["Open"].astype(float).tolist()[-60:] if "Open" in df else df["Close"].astype(float).tolist()[-60:],
+                    "high": df["High"].astype(float).tolist()[-60:] if "High" in df else df["Close"].astype(float).tolist()[-60:],
+                    "low": df["Low"].astype(float).tolist()[-60:] if "Low" in df else df["Close"].astype(float).tolist()[-60:],
+                    "close": df["Close"].astype(float).tolist()[-60:],
+                    "volume": df["Volume"].astype(float).tolist()[-60:] if "Volume" in df else [0] * min(60, len(df)),
+                },
+                "future_dates": future_dates,
+                "prediction": prediction_data,
+            })
+        except Exception as e:
+            traceback.print_exc()
+            return {"error": str(e)}
+
+    def get_prediction_review(self, symbol: str, period: str = "1y", interval: str = "1d", walk_forward_bars: int = 40) -> Dict[str, Any]:
+        """
+        Runs an out-of-sample walk-forward prediction audit on historical data.
+        Evaluates directional accuracy, MAE, RMSE, and past forecast overlays.
+        """
+        try:
+            df = self.fetch_live_data(symbol, period, interval)
+            if df is None or len(df) < 50:
+                df = self.fetch_live_data(symbol, "1y", "1d")
+                interval = "1d"
+
+            audit_report = PredictionReviewer.audit_predictions(
+                df, walk_forward_bars=walk_forward_bars, forecast_horizon=5
+            )
+            audit_report["symbol"] = symbol.upper()
+            audit_report["interval"] = interval
+            audit_report["period"] = period
+            return self._sanitize_for_json(audit_report)
+        except Exception as e:
+            traceback.print_exc()
+            return {"error": str(e)}
+
+    def get_prediction_screener(self, interval: str = "1d", period: str = "1y") -> List[Dict[str, Any]]:
+        """
+        Scans all tracked symbols and generates a predictive conviction leaderboard.
+        """
+        try:
+            symbols = self.get_symbols()
+            if not symbols:
+                symbols = ["SPY", "QQQ", "IWM", "GLD", "TLT", "BTC-USD", "ETH-USD"]
+            screener_data = PredictionScreener.scan_universe(self, symbols[:15], interval=interval, period=period)
+            return self._sanitize_for_json(screener_data)
+        except Exception as e:
+            traceback.print_exc()
+            return []
