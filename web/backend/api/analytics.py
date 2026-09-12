@@ -29,6 +29,21 @@ async def get_predictions(symbol: str, period: str = "1y", interval: str = "1d")
     return await asyncio.to_thread(state.analytics.get_predictions, symbol, period, interval)
 
 
+@router.get("/api/predictions/advanced/{symbol}")
+async def get_advanced_predictions(symbol: str, period: str = "1y", interval: str = "1d", horizon: int = 10):
+    return await asyncio.to_thread(state.analytics.get_advanced_predictions, symbol, period, interval, horizon)
+
+
+@router.get("/api/predictions/review/{symbol}")
+async def get_prediction_review(symbol: str, period: str = "1y", interval: str = "1d", bars: int = 40):
+    return await asyncio.to_thread(state.analytics.get_prediction_review, symbol, period, interval, bars)
+
+
+@router.get("/api/predictions/screener")
+async def get_prediction_screener(interval: str = "1d", period: str = "1y"):
+    return await asyncio.to_thread(state.analytics.get_prediction_screener, interval, period)
+
+
 @router.get("/api/signals")
 async def get_signals():
     return await asyncio.to_thread(state.analytics.get_recent_signals)

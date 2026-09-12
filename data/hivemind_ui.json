@@ -1,1 +1,1 @@
-{"active": true, "sequence": 4924, "assets": ["SPY", "BTC-USD"], "weights": [0.5, 0.5], "regime_vol": 0.02, "cpp_slippage": 0.0, "cpp_pnl": 11557111.988478199, "cpp_orders": 462309124, "py_timestamp": 1787967270947801344, "cpp_timestamp": 0}
+{"active": true, "sequence": 4934, "assets": ["SPY", "BTC-USD"], "weights": [0.5, 0.5], "regime_vol": 0.02, "cpp_slippage": 0.0, "cpp_pnl": 11557111.988478199, "cpp_orders": 462309124, "py_timestamp": 1789234458455572992, "cpp_timestamp": 0}
