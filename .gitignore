@@ -31,6 +31,8 @@ data/alpaca_creds.json
 
 # Backup files
 *.bak
+*.phase2bak
+*.phase5bak
 
 # Build artifacts
 build/

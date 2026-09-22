@@ -105,18 +105,19 @@ void engine_loop() {
 
             // --- HIVE-MIND IPC READER ---
             if (hive_bridge) {
-                static uint64_t last_seq = 0;
-uint64_t seq1 = *(volatile uint64_t*)&hive_bridge->sequence;
-if (seq1 != last_seq) {
+                static std::atomic<uint64_t> last_seq{0};
+                uint64_t seq1 = __atomic_load_n(&hive_bridge->sequence, __ATOMIC_ACQUIRE);
+                if (seq1 != last_seq.load(std::memory_order_relaxed)) {
+                    last_seq.store(seq1, std::memory_order_relaxed);
                     uint32_t n = hive_bridge->num_assets;
                     double vol = hive_bridge->regime_vol;
                     if (vol == 0.0) vol = 0.05; // Fallback
 
                     // --- MODULE 1: STATARB PAIR EXECUTION ---
-                    int8_t arb_sig = *(volatile int8_t*)&hive_bridge->statarb_signal;
+                    int8_t arb_sig = __atomic_load_n(&hive_bridge->statarb_signal, __ATOMIC_ACQUIRE);
                     if (arb_sig != 0) {
-                        double beta = *(volatile double*)&hive_bridge->statarb_hedge_ratio;
-                        double z = *(volatile double*)&hive_bridge->statarb_spread_z;
+                        double beta = __atomic_load_n(&hive_bridge->statarb_hedge_ratio, __ATOMIC_ACQUIRE);
+                        double z = __atomic_load_n(&hive_bridge->statarb_spread_z, __ATOMIC_ACQUIRE);
 
                         // Simulate Pair Trade: Long S1, Short S2 (or vice versa)
                         double price_s1 = 100.0 + (rand() % 500) / 100.0; // Synthetic price
@@ -136,9 +137,9 @@ if (seq1 != last_seq) {
                         // PnL is the convergence of the spread minus slippage
                         double spread_pnl = (fill1 - fill2) * (arb_sig > 0 ? 1 : -1);
 
-                        *(volatile double*)&hive_bridge->realized_pnl += spread_pnl;
-                        *(volatile uint32_t*)&hive_bridge->orders_sent += 2;
-                        *(volatile uint32_t*)&hive_bridge->orders_filled += 2;
+                        __atomic_fetch_add(&hive_bridge->realized_pnl, spread_pnl, __ATOMIC_RELEASE);
+                        __atomic_fetch_add(&hive_bridge->orders_sent, 2u, __ATOMIC_RELEASE);
+                        __atomic_fetch_add(&hive_bridge->orders_filled, 2u, __ATOMIC_RELEASE);
 
                         // Audit the pair trade
                         audit_log.append_event(get_nanos(), "STATARB_PAIR_EXEC", z, spread_pnl);
@@ -167,19 +168,19 @@ if (seq1 != last_seq) {
 
                                     double slippage_usd = std::abs(fill_price - price) * shares;
 
-                                    // Write Feedback to Python
-                                    *(volatile double*)&hive_bridge->total_slippage += slippage_usd;
-                                    *(volatile double*)&hive_bridge->realized_pnl -= slippage_usd; // Slippage is a cost
-                                    *(volatile uint32_t*)&hive_bridge->orders_sent += 1;
-                                    *(volatile uint32_t*)&hive_bridge->orders_filled += 1;
-                                    *(volatile uint64_t*)&hive_bridge->cpp_timestamp = get_nanos();
+                                    // Write Feedback to Python (atomic RMW)
+                                    __atomic_fetch_add(&hive_bridge->total_slippage, slippage_usd, __ATOMIC_RELEASE);
+                                    __atomic_fetch_sub(&hive_bridge->realized_pnl, slippage_usd, __ATOMIC_RELEASE);
+                                    __atomic_fetch_add(&hive_bridge->orders_sent, 1u, __ATOMIC_RELEASE);
+                                    __atomic_fetch_add(&hive_bridge->orders_filled, 1u, __ATOMIC_RELEASE);
+                                    __atomic_store_n(&hive_bridge->cpp_timestamp, get_nanos(), __ATOMIC_RELEASE);
 
                                     current_weights[i] = target_w;
                                 }
                             }
                         }
                     }
-                    *(volatile double*)&hive_bridge->portfolio_value = portfolio_value;
+                    __atomic_store_n(&hive_bridge->portfolio_value, portfolio_value, __ATOMIC_RELEASE);
                 }
             }
 
@@ -195,53 +196,69 @@ if (seq1 != last_seq) {
 // --- PRODUCER THREAD (Live Network Ingestor) ---
 void live_data_ingestor() {
     ix::initNetSystem();
-    ix::WebSocket webSocket;
 
-    // Binance Live Trade Stream
-    webSocket.setUrl("wss://stream.binance.com:9443/ws/btcusdt@trade");
+    while (running.load(std::memory_order_relaxed)) {
+        ix::WebSocket webSocket;
+        webSocket.setUrl("wss://stream.binance.com:9443/ws/btcusdt@trade");
 
-    webSocket.setOnMessageCallback([&](const ix::WebSocketMessagePtr& msg) {
-        if (msg->type == ix::WebSocketMessageType::Message) {
-            uint64_t ingest_time = get_nanos();
+        std::atomic<bool> ws_open{false};
+        std::atomic<bool> ws_done{false};
 
-            try {
-                json j = json::parse(msg->str);
-                Event ev;
-                ev.type = EventType::ORDER_BOOK_UPDATE;
-                ev.timestamp_ns = ingest_time;
-                ev.order_id = j["t"].get<uint64_t>();
+        webSocket.setOnMessageCallback([&](const ix::WebSocketMessagePtr& msg) {
+            if (msg->type == ix::WebSocketMessageType::Message) {
+                uint64_t ingest_time = get_nanos();
 
-                // Binance sends strings for precision, we parse to double
-                ev.price = std::stod(j["p"].get<std::string>());
-                ev.quantity = std::stod(j["q"].get<std::string>());
+                try {
+                    json j = json::parse(msg->str);
+                    Event ev;
+                    ev.type = EventType::ORDER_BOOK_UPDATE;
+                    ev.timestamp_ns = ingest_time;
+                    ev.order_id = j["t"].get<uint64_t>();
 
-                // m = true means buyer is market maker (so this was a SELL market order)
-                ev.side = j["m"].get<bool>() ? Side::SELL : Side::BUY;
+                    // Binance sends strings for precision, we parse to double
+                    ev.price = std::stod(j["p"].get<std::string>());
+                    ev.quantity = std::stod(j["q"].get<std::string>());
 
-                while (running.load(std::memory_order_relaxed) && !event_queue.push(ev)) {
-                    #if defined(__x86_64__)
-                        __builtin_ia32_pause();
-                    #endif
+                    // m = true means buyer is market maker (so this was a SELL market order)
+                    ev.side = j["m"].get<bool>() ? Side::SELL : Side::BUY;
+
+                    while (running.load(std::memory_order_relaxed) && !event_queue.push(ev)) {
+                        #if defined(__x86_64__)
+                            __builtin_ia32_pause();
+                        #endif
+                    }
+                } catch (const std::exception& e) {
+                    // Drop malformed packets silently (Institutional standard)
                 }
-            } catch (const std::exception& e) {
-                // Drop malformed packets silently (Institutional standard)
+            } else if (msg->type == ix::WebSocketMessageType::Open) {
+                std::cout << "[NEXUS] Connected to Binance Live Feed!\n";
+                ws_open.store(true, std::memory_order_release);
+            } else if (msg->type == ix::WebSocketMessageType::Error ||
+                       msg->type == ix::WebSocketMessageType::Close) {
+                std::cerr << "[NEXUS] WebSocket disconnected: "
+                          << (msg->type == ix::WebSocketMessageType::Error
+                              ? msg->errorInfo.reason : "closed") << "\n";
+                ws_done.store(true, std::memory_order_release);
             }
-        } else if (msg->type == ix::WebSocketMessageType::Open) {
-            std::cout << "[NEXUS] Connected to Binance Live Feed!\n";
-        } else if (msg->type == ix::WebSocketMessageType::Error) {
-            std::cerr << "[NEXUS] WebSocket Error: " << msg->errorInfo.reason << "\n";
+        });
+
+        webSocket.start();
+
+        // Wait until connection closes or shutdown
+        while (running.load(std::memory_order_relaxed) && !ws_done.load(std::memory_order_acquire)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
-    });
 
-    webSocket.start();
+        webSocket.stop();
+        ix::uninitNetSystem();
 
-    // Keep thread alive while WebSocket runs
-    while(running.load()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (!running.load(std::memory_order_relaxed)) break;
+
+        std::cerr << "[NEXUS] Reconnecting in 3s...\n";
+        for (int i = 0; i < 30 && running.load(std::memory_order_relaxed); ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
-
-    webSocket.stop();
-    ix::uninitNetSystem();
 }
 
 // --- TELEMETRY WRITER ---
@@ -422,11 +439,13 @@ int main() {
     std::thread micro_thread(microstructure_generator_loop);
 
     // Run until killed by the OS or FastAPI
+    // Join order: producer first (may block on WS reconnect), then consumer,
+    // then remaining threads. Signal running=false to ensure all loops exit.
     producer.join();
     consumer.join();
-    telemetry.join();
     ghost_thread.join();
     micro_thread.join();
+    telemetry.join();
 
     return 0;
 }

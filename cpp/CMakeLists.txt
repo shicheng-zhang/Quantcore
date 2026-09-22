@@ -9,4 +9,7 @@ set_target_properties(_cpp PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     BUILD_RPATH "$ORIGIN"
     INSTALL_RPATH "$ORIGIN"
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
 )
+target_compile_options(_cpp PRIVATE -Wall -Wextra -Wpedantic)

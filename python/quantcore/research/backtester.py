@@ -3,6 +3,7 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 """Institutional Vectorized Backtester."""
 import polars as pl
 import numpy as np
+import logging
 
 import math
 
@@ -70,7 +71,8 @@ class Backtester:
                         df = self._normalize_date(df)
                         frames.append(df)
                         valid_symbols.append(sym)
-                except Exception: pass
+                except Exception as e:
+                    logging.getLogger(__name__).debug("Skipping %s: %s", sym, e)
 
         if not frames:
             raise ValueError(f"Could not load any symbols from universe. Check tickers and data availability.")

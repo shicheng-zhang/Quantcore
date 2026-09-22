@@ -12,6 +12,18 @@ import itertools
 import json
 import warnings
 import pickle
+import io
+
+class _SafeUnpickler(pickle.Unpickler):
+    """Restrict unpickling to tuples of floats only (the only format we write)."""
+    def find_class(self, module, name):
+        if module == 'builtins' and name in ('tuple', 'float', 'int', 'list'):
+            return getattr(__builtins__, name) if isinstance(__builtins__, dict) else getattr(__builtins__, name)
+        raise pickle.UnpicklingError(f"Restricted: {module}.{name}")
+
+def _safe_load_pkl(path):
+    with open(path, "rb") as f:
+        return _SafeUnpickler(f).load()
 
 warnings.filterwarnings('ignore')
 sys.stdout.reconfigure(line_buffering=True)
@@ -72,7 +84,7 @@ def fetch_pair_data(sym1, sym2, period="2y"):
     cache_file = os.path.join(CACHE_DIR, f"{sym1}_{sym2}.pkl")
     if os.path.exists(cache_file) and (time.time() - os.path.getmtime(cache_file) < 3600):
         with open(cache_file, "rb") as f:
-            return pickle.load(f)
+            return _safe_load_pkl(cache_file)
             
     print(f"  [DATA] Fetching {sym1} and {sym2}...")
     df = yf.download([sym1, sym2], period=period, interval="1d", progress=False, timeout=15)
@@ -102,7 +114,7 @@ def scan_universe():
         try:
             y, x = fetch_pair_data(s1, s2)
             score, pvalue, _ = coint(y, x)
-            if pvalue > 0.90: continue
+            if pvalue > 0.05: continue
             
             slope, intercept, _, _, _ = stats.linregress(x, y)
             spread = y - (slope * x + intercept)
@@ -162,7 +174,8 @@ def run_daemon():
                             if best_pair['signal'] == 1 and _avg_sent < -0.5: veto_trade = True
                             if best_pair['signal'] == -1 and _avg_sent > 0.5: veto_trade = True
                             if veto_trade: print(f"[SATELLITE VETO] Blocked trade. Signal: {best_pair['signal']}, Sentiment: {_avg_sent:.2f}")
-                except Exception: pass
+                except Exception as e:
+                    print(f"[SATELLITE] Feed read error: {e}")
 
                 if not veto_trade:
                     bridge.statarb_signal = best_pair['signal']

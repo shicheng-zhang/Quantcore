@@ -1,6 +1,7 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import json
 import os
+import logging
 from datetime import datetime
 
 class VaderEngine:
@@ -18,7 +19,8 @@ class VaderEngine:
         if os.path.exists(self.feed_file):
             try:
                 with open(self.feed_file, "r") as f: feed = json.load(f)
-            except Exception: pass
+            except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+                logging.getLogger(__name__).debug("Feed file read error: %s", e)
         
         feed.insert(0, {
             "type": "NEWS_SENTIMENT",

@@ -1,6 +1,9 @@
 import os
 import time
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 def run_surveillance():
     print("[SURVEILLANCE] FINRA/SEC Market Abuse Monitor Online.")
@@ -27,7 +30,7 @@ def run_surveillance():
                     # Reset is handled via API
 
         except Exception as e:
-            pass
+            logger.error("[SURVEILLANCE] Monitor loop error: %s", e, exc_info=True)
 
         time.sleep(2)
 

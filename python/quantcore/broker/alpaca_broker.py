@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import logging
 
 class AlpacaBroker:
     def __init__(self):
@@ -78,5 +79,6 @@ class AlpacaBroker:
             res = requests.get(f"{base_url}/v2/account", headers=self.get_headers(), timeout=5)
             if res.status_code == 200:
                 return res.json()
-        except Exception: pass
+        except Exception as e:
+            logging.getLogger(__name__).warning("get_account failed: %s", e)
         return None

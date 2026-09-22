@@ -5,13 +5,31 @@
 #include "quantcore/data_engine.h"
 #include "quantcore/feature_engine.h"
 #include "quantcore/risk_engine.h"
+#include <algorithm>
+#include <cctype>
+#include <string>
 
 namespace py = pybind11;
 using namespace quantcore;
 
+namespace {
+bool safe_query_sql(const std::string& sql) {
+    std::string upper = sql;
+    std::transform(upper.begin(), upper.end(), upper.begin(),
+                   [](unsigned char c){ return std::toupper(c); });
+    static const std::vector<std::string> allowed_prefixes = {
+        "SELECT", "WITH", "SHOW", "DESCRIBE", "EXPLAIN"
+    };
+    for (const auto& prefix : allowed_prefixes) {
+        if (upper.rfind(prefix, 0) == 0) return true;
+    }
+    return false;
+}
+} // namespace
+
 PYBIND11_MODULE(quantcore_cpp, m) {
     m.doc() = "QuantCore C++ Engine";
-    m.def("version", []() { return "1.0.0"; });
+    m.def("version", []() { return "1.1.0"; });
     m.def("thread_count", []() { return std::thread::hardware_concurrency(); });
 
     py::enum_<Side>(m, "Side").value("BUY", Side::BUY).value("SELL", Side::SELL);
@@ -28,6 +46,9 @@ PYBIND11_MODULE(quantcore_cpp, m) {
         .def(py::init<const std::string&>(), py::arg("db_path") = ":memory:")
         .def("load_parquet_directory", &DataEngine::load_parquet_directory)
         .def("query_sql", [](DataEngine& self, const std::string& sql) {
+            if (!safe_query_sql(sql)) {
+                throw std::invalid_argument("Unsafe SQL rejected: only SELECT/WITH/SHOW/DESCRIBE/EXPLAIN permitted");
+            }
             auto result = self.connection().Query(sql);
             py::list rows;
             for (size_t i = 0; i < result->RowCount(); i++) {

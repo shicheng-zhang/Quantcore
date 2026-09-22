@@ -5,6 +5,10 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include <thread>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 
 namespace nexus {
 

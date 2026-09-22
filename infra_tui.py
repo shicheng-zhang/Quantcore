@@ -115,10 +115,12 @@ class TelemetryWidget(Static):
         hive = {}
         try:
             with open(DATA_DIR / "nexus_live.json") as f: nexus = json.load(f)
-        except: pass
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            pass
         try:
             with open(DATA_DIR / "hivemind_ui.json") as f: hive = json.load(f)
-        except: pass
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            pass
 
         eps = nexus.get("events_processed", 0)
         p99 = nexus.get("latency_ns_p99", 0)
@@ -242,14 +244,15 @@ class InfraTUI(App):
 
     # --- WEB & SURVEILLANCE ACTIONS ---
     def action_start_web(self) -> None:
-        log_file = open(DATA_DIR / "uvicorn.log", "w")
         env = os.environ.copy()
         duckdb_lib_dir = str(BASE_DIR / "build" / "_deps" / "duckdb-build" / "src")
         qc_lib_dir = str(BASE_DIR / "python" / "quantcore")
         current_ld_path = env.get("LD_LIBRARY_PATH", "")
         env["LD_LIBRARY_PATH"] = f"{duckdb_lib_dir}:{qc_lib_dir}:{current_ld_path}"
-        subprocess.Popen([sys.executable, "-m", "uvicorn", "web.backend.main:app", "--host", "127.0.0.1", "--port", "8765"],
-                         cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT, env=env)
+        log_path = DATA_DIR / "uvicorn.log"
+        with open(log_path, "w") as log_file:
+            subprocess.Popen([sys.executable, "-m", "uvicorn", "web.backend.main:app", "--host", "127.0.0.1", "--port", "8765"],
+                             cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT, env=env)
         self.notify("Web UI Started (http://127.0.0.1:8765)")
 
     def action_stop_web(self) -> None:
@@ -257,8 +260,10 @@ class InfraTUI(App):
         self.notify("Web UI Stopped")
 
     def action_start_surv(self) -> None:
-        subprocess.Popen([sys.executable, "-u", "python/quantcore/ops/surveillance_daemon.py"],
-                         cwd=BASE_DIR, stdout=open(DATA_DIR / "surveillance.log", "w"), stderr=subprocess.STDOUT)
+        log_path = DATA_DIR / "surveillance.log"
+        with open(log_path, "w") as log_file:
+            subprocess.Popen([sys.executable, "-u", "python/quantcore/ops/surveillance_daemon.py"],
+                             cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
         self.notify("Surveillance Daemon Started")
 
     def action_stop_surv(self) -> None:
@@ -267,8 +272,10 @@ class InfraTUI(App):
 
     # --- CORE ACTIONS ---
     def action_start_nexus(self) -> None:
-        subprocess.Popen(["stdbuf", "-oL", str(BASE_DIR / "nexus/build/nexus_core")],
-                         cwd=BASE_DIR, stdout=open(DATA_DIR / "nexus_core.log", "w"), stderr=subprocess.STDOUT)
+        log_path = DATA_DIR / "nexus_core.log"
+        with open(log_path, "w") as log_file:
+            subprocess.Popen(["stdbuf", "-oL", str(BASE_DIR / "nexus/build/nexus_core")],
+                             cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
         self.notify("Nexus Core Engaged")
 
     def action_stop_nexus(self) -> None:
@@ -276,8 +283,10 @@ class InfraTUI(App):
         self.notify("Nexus Core Halted")
 
     def action_start_daemon(self) -> None:
-        subprocess.Popen([sys.executable, "-u", "python/quantcore/hivemind/quant_daemon.py"],
-                         cwd=BASE_DIR, stdout=open(DATA_DIR / "quant_daemon.log", "w"), stderr=subprocess.STDOUT)
+        log_path = DATA_DIR / "quant_daemon.log"
+        with open(log_path, "w") as log_file:
+            subprocess.Popen([sys.executable, "-u", "python/quantcore/hivemind/quant_daemon.py"],
+                             cwd=BASE_DIR, stdout=log_file, stderr=subprocess.STDOUT)
         self.notify("Quant Daemon Started")
 
     def action_stop_daemon(self) -> None:
@@ -286,7 +295,9 @@ class InfraTUI(App):
 
     def action_clear_logs(self) -> None:
         for log in ["nexus_core.log", "quant_daemon.log", "surveillance.log", "uvicorn.log"]:
-            open(DATA_DIR / log, "w").close()
+            log_path = DATA_DIR / log
+            with open(log_path, "w") as f:
+                f.truncate(0)
         self.query_one(LogViewer).last_size = 0
         self.query_one(LogViewer).clear()
         self.notify("Logs Cleared")
