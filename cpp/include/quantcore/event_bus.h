@@ -6,6 +6,8 @@
 #include <any>
 #include <typeindex>
 #include <algorithm> // REQUIRED for std::remove_if
+#include <stdexcept>
+#include <string>
 
 namespace quantcore {
     class EventBus {
@@ -23,7 +25,16 @@ namespace quantcore {
             std::lock_guard<std::mutex> lock(mutex_);
             auto key = std::type_index(typeid(T));
             if (auto it = subscribers_.find(key); it != subscribers_.end()) {
-                for (auto& [id, cb] : it->second) { try { cb(event); } catch (...) {} }
+                for (auto& [id, cb] : it->second) {
+                    try { cb(event); }
+                    catch (const std::exception& e) {
+                        // Log callback exceptions instead of silently swallowing
+                        fprintf(stderr, "[EventBus] Callback exception: %s\n", e.what());
+                    }
+                    catch (...) {
+                        fprintf(stderr, "[EventBus] Callback threw unknown exception\n");
+                    }
+                }
             }
         }
         void unsubscribe(CallbackId id) {

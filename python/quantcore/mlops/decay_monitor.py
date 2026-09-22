@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import logging
 from datetime import datetime
 
 class DecayMonitor:
@@ -20,7 +21,8 @@ class DecayMonitor:
         if os.path.exists(self.history_file):
             try:
                 with open(self.history_file, "r") as f: history = json.load(f)
-            except Exception: pass
+            except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+                logging.getLogger(__name__).debug("History file read error: %s", e)
 
         for m in models:
             # Simulate alpha decay: Half-life stretches, p-value degrades, Sharpe drops

@@ -93,7 +93,9 @@ async def run_intraday_backtest(symbol: str, interval: str = "5m"):
 
 @router.post("/api/day_trading/scalp")
 async def execute_scalp(order: PaperOrder, _: None = Depends(require_control_access)):
-    result = state.paper_broker.submit_order(order.symbol, order.side, order.qty, "VWAP")
+    result = await asyncio.to_thread(
+        state.paper_broker.submit_order, order.symbol, order.side, order.qty, "VWAP"
+    )
     if result.get("status") == "FILLED":
         asyncio.create_task(state.broadcast_tape(result))
     return result

@@ -2,6 +2,9 @@
 #include <atomic>
 #include <string>
 #include <random>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 
 namespace nexus {
 

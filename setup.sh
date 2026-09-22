@@ -1,6 +1,7 @@
 #!/bin/bash
+set -e
 echo "=========================================="
-echo " ⚡ QuantCore V1.0 Initialization"
+echo " ⚡ QuantCore V1.1 Initialization"
 echo "=========================================="
 echo "[1/5] Installing system dependencies..."
 sudo apt update

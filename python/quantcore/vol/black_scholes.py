@@ -37,8 +37,8 @@ class BlackScholes:
 class VolSurface:
     @staticmethod
     def generate_surface(S, base_iv, r=0.05):
-        # FIX E: Seed RNG for deterministic surface (prevents flickering on refresh)
-        np.random.seed(42)
+        # Use local RNG for determinism without polluting global state
+        rng = np.random.default_rng(42)
         # Simulate the institutional "Volatility Smile/Skew"
         strikes = np.linspace(S * 0.8, S * 1.2, 15)
         expirations = np.array([7, 14, 30, 60, 90]) / 365.0
@@ -52,7 +52,7 @@ class VolSurface:
                 skew_premium = 0.05 * moneyness + 0.1 * (moneyness ** 2)
                 # Term structure: short dated options have higher vol (contango/backwardation)
                 term_premium = 0.02 * (1 / (T * 365))
-                iv = base_iv + skew_premium + term_premium + np.random.normal(0, 0.01)
+                iv = base_iv + skew_premium + term_premium + rng.normal(0, 0.01)
                 row.append(max(0.05, iv))
             z_matrix.append(row)
 

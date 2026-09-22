@@ -202,7 +202,8 @@ class AnalyticsEngine:
                 if not valid_prices.empty:
                     price = float(valid_prices.iloc[-1])
                     if price > 0: latest_prices[symbol] = price
-            except Exception: pass
+            except Exception as e:
+                logger.debug("Failed to fetch overview for %s: %s", symbol, e)
         return {"total_symbols": len(symbols), "latest_prices": latest_prices, "system_status": "Active", "last_update": datetime.now().isoformat()}
 
     def get_trend_analysis(self, symbol: str, period: str = "1y", interval: str = "1d") -> Dict[str, Any]:
@@ -331,12 +332,29 @@ class AnalyticsEngine:
                 analysis = self.get_trend_analysis(symbol, "5d", "1h")
                 if "signals" in analysis:
                     for sig in analysis["signals"][-3:]: signals.append({"symbol": symbol, "date": sig["date"], "type": sig["type"], "price": sig["price"]})
-            except Exception: pass
+            except Exception as e:
+                logger.debug("Signal scan failed for %s: %s", symbol, e)
         signals.sort(key=lambda x: x["date"], reverse=True)
         return signals[:20]
 
     def get_performance_metrics(self) -> Dict[str, Any]:
-        return {"sharpe_ratio": 1.85, "max_drawdown": -8.5, "win_rate": 62.3, "total_trades": 145, "avg_return": 2.1, "volatility": 12.4}
+        try:
+            result = self.data_engine.query_sql(
+                "SELECT COUNT(*) as total_trades FROM market_data"
+            )
+            total_trades = int(result[0]['total_trades']) if result else 0
+            return {
+                "sharpe_ratio": None,
+                "max_drawdown": None,
+                "win_rate": None,
+                "total_trades": total_trades,
+                "avg_return": None,
+                "volatility": None,
+                "message": "Performance metrics require completed backtest data"
+            }
+        except Exception:
+            return {"sharpe_ratio": None, "max_drawdown": None, "win_rate": None,
+                    "total_trades": 0, "avg_return": None, "volatility": None}
 
     def get_advanced_predictions(self, symbol: str, period: str = "1y", interval: str = "1d", horizon_steps: int = 10) -> Dict[str, Any]:
         """
