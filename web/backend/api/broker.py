@@ -11,19 +11,29 @@ router = APIRouter(tags=["broker"])
 
 @router.get("/api/paper/state")
 async def get_paper_state():
-    s = await asyncio.to_thread(state.paper_broker.ledger.get_state)
-    trades = await asyncio.to_thread(state.paper_broker.ledger.get_recent_trades)
-    return {"state": s, "trades": trades}
+    try:
+        if state.paper_broker is None:
+            return {"error": "Paper broker unavailable", "state": {"cash": 0, "initial_cash": 0, "positions": []}, "trades": []}
+        s = await asyncio.to_thread(state.paper_broker.ledger.get_state)
+        trades = await asyncio.to_thread(state.paper_broker.ledger.get_recent_trades)
+        return {"state": s, "trades": trades}
+    except Exception as e:
+        return {"error": str(e), "state": {"cash": 0, "initial_cash": 0, "positions": []}, "trades": []}
 
 
 @router.post("/api/paper/order")
 async def submit_paper_order(order: PaperOrder, _: None = Depends(require_control_access)):
-    result = await asyncio.to_thread(
-        state.paper_broker.submit_order, order.symbol, order.side, order.qty, order.algo
-    )
-    if result.get("status") == "FILLED":
-        asyncio.create_task(state.broadcast_tape(result))
-    return result
+    try:
+        if state.paper_broker is None:
+            return {"status": "REJECTED", "reason": "Broker unavailable"}
+        result = await asyncio.to_thread(
+            state.paper_broker.submit_order, order.symbol, order.side, order.qty, order.algo
+        )
+        if result.get("status") == "FILLED":
+            asyncio.create_task(state.broadcast_tape(result))
+        return result
+    except Exception as e:
+        return {"status": "REJECTED", "reason": str(e)}
 
 
 @router.post("/api/paper/reset")

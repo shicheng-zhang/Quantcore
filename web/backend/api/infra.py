@@ -54,8 +54,13 @@ async def statarb_status():
 # --- TIME MACHINE ---
 @router.post("/api/time_machine/run")
 async def run_time_machine(req: dict, _: None = Depends(require_control_access)):
-    scenario = req.get("scenario", "2022_crypto_winter")
-    return await asyncio.to_thread(state.time_machine.run_stress_test, scenario)
+    try:
+        if state.time_machine is None:
+            return {"error": "Time machine unavailable"}
+        scenario = req.get("scenario", "2022_crypto_winter")
+        return await asyncio.to_thread(state.time_machine.run_stress_test, scenario)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/time_machine/report")
@@ -69,7 +74,12 @@ async def get_tm_report():
 # --- MACRO DESK ---
 @router.get("/api/macro/state")
 async def get_macro_state():
-    return state.macro_engine.get_regime()
+    try:
+        if state.macro_engine is None:
+            return {"error": "Macro engine unavailable", "regime": "RISK-ON", "vix": 0, "us10y": 0, "dxy": 0}
+        return state.macro_engine.get_regime()
+    except Exception as e:
+        return {"error": str(e), "regime": "RISK-ON"}
 
 
 # --- SATELLITE LAYER (ALT DATA) ---
@@ -90,44 +100,60 @@ async def get_alt_feed():
 # --- VOLATILITY DESK ---
 @router.get("/api/vol/surface")
 async def get_vol_surface(spot: float = 65000.0, iv: float = 0.45):
-    from python.quantcore.vol.black_scholes import VolSurface
-    return VolSurface.generate_surface(spot, iv)
+    try:
+        from python.quantcore.vol.black_scholes import VolSurface
+        return VolSurface.generate_surface(spot, iv)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/vol/chain")
 async def get_options_chain(spot: float = 65000.0, iv: float = 0.45, T_days: int = 30):
-    from python.quantcore.vol.black_scholes import BlackScholes
-    T = T_days / 365.0
-    r = 0.05
-    strikes = np.linspace(spot * 0.9, spot * 1.1, 9)
-    chain = []
-    for K in strikes:
-        call_p = BlackScholes.price(spot, K, T, r, iv, 'call')
-        put_p = BlackScholes.price(spot, K, T, r, iv, 'put')
-        call_g = BlackScholes.greeks(spot, K, T, r, iv, 'call')
-        put_g = BlackScholes.greeks(spot, K, T, r, iv, 'put')
-        chain.append({
-            "strike": round(K, 2), "moneyness": round(K / spot, 3),
-            "call_price": round(call_p, 2), "call_delta": round(call_g['delta'], 3), "call_theta": round(call_g['theta'], 2),
-            "put_price": round(put_p, 2), "put_delta": round(put_g['delta'], 3), "put_theta": round(put_g['theta'], 2)
-        })
-    return {"spot": spot, "T_days": T_days, "chain": chain}
+    try:
+        from python.quantcore.vol.black_scholes import BlackScholes
+        T = T_days / 365.0
+        r = 0.05
+        strikes = np.linspace(spot * 0.9, spot * 1.1, 9)
+        chain = []
+        for K in strikes:
+            call_p = BlackScholes.price(spot, K, T, r, iv, 'call')
+            put_p = BlackScholes.price(spot, K, T, r, iv, 'put')
+            call_g = BlackScholes.greeks(spot, K, T, r, iv, 'call')
+            put_g = BlackScholes.greeks(spot, K, T, r, iv, 'put')
+            chain.append({
+                "strike": round(K, 2), "moneyness": round(K / spot, 3),
+                "call_price": round(call_p, 2), "call_delta": round(call_g['delta'], 3), "call_theta": round(call_g['theta'], 2),
+                "put_price": round(put_p, 2), "put_delta": round(put_g['delta'], 3), "put_theta": round(put_g['theta'], 2)
+            })
+        return {"spot": spot, "T_days": T_days, "chain": chain}
+    except Exception as e:
+        return {"error": str(e), "spot": spot, "T_days": T_days, "chain": []}
 
 
 # --- ALPHA DECAY MONITOR (MLOps) ---
 @router.get("/api/mlops/health")
 async def get_model_health():
-    results, history = await asyncio.to_thread(state.decay_monitor.evaluate_models)
-    return {"models": results, "history": history}
+    try:
+        if state.decay_monitor is None:
+            return {"error": "Decay monitor unavailable", "models": [], "history": []}
+        results, history = await asyncio.to_thread(state.decay_monitor.evaluate_models)
+        return {"models": results, "history": history}
+    except Exception as e:
+        return {"error": str(e), "models": [], "history": []}
 
 
 # --- RISK COMMITTEE GAUNTLET ---
 @router.post("/api/risk/gauntlet")
 async def run_gauntlet_api(req: GauntletRequest, _: None = Depends(require_control_access)):
-    return await asyncio.to_thread(
-        state.risk_committee.evaluate_strategy,
-        req.strategy_name, req.observed_sr, req.num_trials, req.universe
-    )
+    try:
+        if state.risk_committee is None:
+            return {"error": "Risk committee unavailable"}
+        return await asyncio.to_thread(
+            state.risk_committee.evaluate_strategy,
+            req.strategy_name, req.observed_sr, req.num_trials, req.universe
+        )
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # --- SEED GUARD (AUTO-RESEED) ---

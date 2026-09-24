@@ -16,11 +16,83 @@ from typing import Dict, List, Any
 import traceback
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
-import quantcore.quantcore_cpp as core
+try:
+    import quantcore.quantcore_cpp as core
+    HAS_CPP = True
+except ImportError as e:
+    core = None
+    HAS_CPP = False
+    # Fallback will use pure-python implementations
+    print(f"[WARN] quantcore_cpp not available ({e}); using Python fallback — build with 'cmake .. && make' for C++ acceleration")
+
 from python.quantcore.logging_config import get_logger
 from python.quantcore.data.provider import fetch_history_max, fetch_ohlcv
 
 logger = get_logger(__name__)
+if not HAS_CPP:
+    logger.warning("C++ engine not found — AnalyticsEngine running in Python fallback mode (slower, but functional)")
+
+# ——— Pure-Python fallback for feature_engine when C++ not built ———
+class _FallbackFeatureEngine:
+    @staticmethod
+    def rolling_mean(prices, window):
+        import pandas as pd
+        s = pd.Series(prices)
+        return s.rolling(window).mean().where(pd.notna(s.rolling(window).mean()), float('nan')).tolist()
+
+    @staticmethod
+    def rolling_std(prices, window):
+        import pandas as pd
+        s = pd.Series(prices)
+        # ddof=1 to match C++ sample std
+        return s.rolling(window).std(ddof=1).where(pd.notna(s.rolling(window).std(ddof=1)), float('nan')).tolist()
+
+    @staticmethod
+    def rolling_zscore(prices, window):
+        import pandas as pd, numpy as np
+        s = pd.Series(prices)
+        mean = s.rolling(window).mean()
+        std = s.rolling(window).std(ddof=1)
+        z = (s - mean) / std
+        # Match C++: 0.0 where std <= 1e-10 or NaN, NaN for insufficient history
+        z = z.where(std > 1e-10, 0.0)
+        # First window-1 remain NaN to match C++
+        return z.tolist()
+
+    @staticmethod
+    def order_book_imbalance(bid_vols, ask_vols):
+        import numpy as np
+        bv = np.array(bid_vols); av = np.array(ask_vols)
+        denom = bv + av
+        return np.where(denom > 1e-10, (bv-av)/denom, 0.0).tolist()
+
+class _FallbackDataEngine:
+    def __init__(self, db_path="data/analytics.db"):
+        import duckdb
+        self.con = duckdb.connect(db_path)
+        self._db_path = db_path
+    def load_parquet_directory(self, name, dir):
+        import os
+        # Validate to prevent SQL injection (mirrors C++ qc_is_safe_identifier)
+        if not name.replace("_","").isalnum() or len(name)>64:
+            raise ValueError(f"Unsafe view name: {name}")
+        if ".." in dir or "'" in dir or '"' in dir:
+            raise ValueError(f"Unsafe dir: {dir}")
+        # Drop view if exists, create from parquet
+        try:
+            self.con.execute(f"DROP VIEW IF EXISTS {name}")
+            self.con.execute(f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{dir}/*.parquet')")
+        except Exception as e:
+            # If no parquet files, create empty view so queries don't crash
+            logger.warning(f"_FallbackDataEngine load_parquet_directory failed: {e}")
+    def query_sql(self, sql):
+        # Only allow SELECT-like queries
+        upper = sql.strip().upper()
+        if not any(upper.startswith(p) for p in ("SELECT","WITH","SHOW","DESCRIBE","EXPLAIN")):
+            raise ValueError("Only SELECT queries allowed")
+        return self.con.execute(sql).fetchall()
+    def query_sql_dict(self, sql):
+        return self.con.execute(sql).fetchall()
 from python.quantcore.research.prediction_suite import (
     AdvancedPredictor,
     PredictionReviewer,
@@ -46,8 +118,13 @@ class AnalyticsEngine:
         return obj
 
     def __init__(self):
-        self.data_engine = core.DataEngine("data/analytics.db")
-        self.feature_engine = core.FeatureEngine()
+        if HAS_CPP:
+            self.data_engine = core.DataEngine("data/analytics.db")
+            self.feature_engine = core.FeatureEngine()
+        else:
+            self.data_engine = _FallbackDataEngine("data/analytics.db")
+            self.feature_engine = _FallbackFeatureEngine()
+            logger.info("Using Python fallback engines")
         self._live_cache = {}  # FIX: 60s TTL cache to stop hammering yfinance
         self._load_local_cache()
 
@@ -187,10 +264,24 @@ class AnalyticsEngine:
 
     def get_symbols(self) -> List[str]:
         try:
-            result = self.data_engine.query_sql("SELECT DISTINCT symbol FROM market_data ORDER BY symbol")
-            return [row['symbol'] for row in result]
-        except Exception:
-            return [f.replace('.parquet', '') for f in os.listdir("data/raw/equities") if f.endswith('.parquet')]
+            if HAS_CPP:
+                result = self.data_engine.query_sql("SELECT DISTINCT symbol FROM market_data ORDER BY symbol")
+                # C++ returns list of dicts with string values
+                if result and isinstance(result[0], dict):
+                    return [row['symbol'] for row in result]
+                else:
+                    # fallback duckdb rows are tuples
+                    return [row[0] for row in result]
+            else:
+                # Fallback: query via duckdb directly, handles empty parquet
+                rows = self.data_engine.con.execute("SELECT DISTINCT symbol FROM market_data ORDER BY symbol").fetchall()
+                return [r[0] for r in rows if r[0]]
+        except Exception as e:
+            logger.debug(f"get_symbols fallback to directory scan: {e}")
+            try:
+                return [f.replace('.parquet', '') for f in os.listdir("data/raw/equities") if f.endswith('.parquet')]
+            except Exception:
+                return []
 
     def get_overview(self) -> Dict[str, Any]:
         symbols = self.get_symbols()

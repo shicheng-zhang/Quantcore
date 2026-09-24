@@ -1,72 +1,180 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-.bg-gray-900 {
-    background-color: #111827;
-}
-
-.bg-gray-800 {
-    background-color: #1f2937;
-}
-
-.bg-gray-700 {
-    background-color: #374151;
-}
-
-.text-gray-100 {
-    color: #f3f4f6;
-}
-
-.text-gray-400 {
-    color: #9ca3af;
-}
-
-.border-gray-700 {
-    border-color: #374151;
-}
-
-
-/* =========================================
-   QUANTCORE ULTRAWIDE DYNAMIC OVERRIDE
-   Target: 3440x1440 and wider
-   Safe Injection: Appended via Python script
-   ========================================= */
-
-/*
-  Tailwind's default .container caps at 1536px (2xl breakpoint).
-  On a 3440px monitor, this leaves ~950px of dead space on each side.
-  We dynamically expand it based on viewport width.
+/* QuantCore 1.1 — Design System
+   Tokens, themes, density, accessibility, power-user components
 */
 
+/* ——— CSS Variables ——— */
+:root {
+  --qc-bg: #0a0f1c;
+  --qc-bg-elevated: #0f172a;
+  --qc-surface: #111827;
+  --qc-surface-hover: #1e293b;
+  --qc-border: #1e293b;
+  --qc-border-strong: #2d3a4e;
+  --qc-text: #e5e7eb;
+  --qc-text-muted: #94a3b8;
+  --qc-text-faint: #64748b;
+  --qc-accent: #3b82f6;
+  --qc-accent-hover: #2563eb;
+  --qc-success: #10b981;
+  --qc-warning: #f59e0b;
+  --qc-danger: #ef4444;
+  --qc-radius: 8px;
+  --qc-radius-lg: 12px;
+  --qc-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --qc-focus: 0 0 0 2px rgba(59,130,246,0.5);
+  --qc-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --qc-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --qc-content-max: 1600px;
+}
+
+[data-theme="light"] {
+  --qc-bg: #f8fafc;
+  --qc-bg-elevated: #ffffff;
+  --qc-surface: #f1f5f9;
+  --qc-surface-hover: #e2e8f0;
+  --qc-border: #e2e8f0;
+  --qc-border-strong: #cbd5e1;
+  --qc-text: #0f172a;
+  --qc-text-muted: #475569;
+  --qc-text-faint: #94a3b8;
+}
+
+/* ——— Base ——— */
+* { scrollbar-width: thin; scrollbar-color: var(--qc-border-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--qc-border-strong); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--qc-font-sans);
+  background: var(--qc-bg);
+  color: var(--qc-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: rgba(59,130,246,0.3); color: #bfdbfe; }
+
+/* ——— Density ——— */
+[data-density="compact"] { --qc-pad: 0.5rem; --qc-gap: 0.75rem; --qc-text-sm: 12px; }
+[data-density="comfortable"] { --qc-pad: 1rem; --qc-gap: 1rem; --qc-text-sm: 13px; }
+[data-density="spacious"] { --qc-pad: 1.5rem; --qc-gap: 1.5rem; --qc-text-sm: 14px; }
+
+/* ——— Focus & Accessibility ——— */
+:focus-visible { outline: none; box-shadow: var(--qc-focus); border-color: var(--qc-accent) !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* ——— Components ——— */
+.qc-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: transparent; border: 1px solid transparent; color: var(--qc-text-muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.qc-icon-btn:hover { background: var(--qc-surface); border-color: var(--qc-border); color: var(--qc-text); }
+.qc-icon-btn:focus-visible { border-color: var(--qc-accent); box-shadow: var(--qc-focus); }
+.qc-icon-btn:active { transform: scale(0.96); }
+
+.qc-kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  font-family: var(--qc-font-mono); font-size: 11px; font-weight: 600;
+  background: #1e293b; border: 1px solid #334155; border-bottom-width: 2px;
+  border-radius: 4px; color: #94a3b8; line-height: 1;
+}
+[data-theme="light"] .qc-kbd { background: #e2e8f0; border-color: #cbd5e1; color: #475569; }
+
+.qc-pill {
+  padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: transparent; border: 1px solid var(--qc-border); color: var(--qc-text-muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.qc-pill:hover { border-color: var(--qc-border-strong); color: var(--qc-text); }
+.qc-pill.active { background: var(--qc-accent); border-color: var(--qc-accent); color: #fff; }
+
+.qc-card {
+  background: var(--qc-surface); border: 1px solid var(--qc-border); border-radius: var(--qc-radius-lg);
+}
+.qc-card:hover { border-color: var(--qc-border-strong); }
+
+.qc-nav-heading {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--qc-text-faint); margin-bottom: 8px; padding: 0 8px;
+}
+.qc-nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: var(--qc-text-muted);
+  text-decoration: none; position: relative;
+  transition: all 0.12s;
+}
+.qc-nav-link:hover { background: var(--qc-surface); color: var(--qc-text); }
+.qc-nav-link.active, .qc-nav-link[aria-current="page"] { background: #1e293b; color: #fff; border: 1px solid #334155; }
+.qc-nav-icon { width: 18px; text-align: center; font-size: 12px; flex-shrink: 0; }
+.qc-nav-shortcut { margin-left: auto; font-family: var(--qc-font-mono); font-size: 10px; color: var(--qc-text-faint); opacity: 0; transition: opacity 0.12s; }
+.qc-nav-link:hover .qc-nav-shortcut { opacity: 1; }
+.qc-badge { margin-left: auto; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: #0ea5e9; color: #fff; }
+.qc-badge-red { composes: qc-badge; background: #ef4444; }
+.qc-badge-orange { composes: qc-badge; background: #f97316; }
+.qc-fav-btn { margin-left: 4px; background: none; border: none; color: var(--qc-text-faint); cursor: pointer; font-size: 12px; opacity: 0; transition: opacity 0.12s; }
+.qc-nav-link:hover .qc-fav-btn { opacity: 1; }
+.qc-fav-btn.active { opacity: 1; color: #f59e0b; }
+
+.qc-density-btn {
+  width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--qc-text-muted);
+  cursor: pointer; font-size: 12px; transition: all 0.12s;
+}
+.qc-density-btn.active { background: var(--qc-accent); color: #fff; border-color: var(--qc-accent); }
+
+.qc-scrollbar { scrollbar-width: thin; }
+.qc-scrollbar::-webkit-scrollbar { width: 6px; }
+
+/* Mode switch - preserved */
+.mode-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.mode-switch input { opacity: 0; width: 0; height: 0; }
+.mode-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e293b; transition: .2s; border-radius: 24px; border: 1px solid #334155; }
+.mode-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: #e2e8f0; transition: .2s; border-radius: 50%; }
+input:checked + .mode-slider { background-color: #3b82f6; border-color: #3b82f6; }
+input:checked + .mode-slider:before { transform: translateX(20px); background-color: #fff; }
+
+/* Mode visibility */
+body[data-mode="pro"] .edu-only { display: none !important; }
+body[data-mode="learn"] .pro-only { display: none !important; }
+body[data-mode="learn"] [data-term] { position: relative; cursor: help; border-bottom: 1px dashed #60a5fa; color: #93c5fd; }
+body[data-mode="learn"] [data-term]:hover { color: #bfdbfe; }
+
+/* Tables - power user */
+.qc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.qc-table th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--qc-text-faint); padding: 10px 12px; border-bottom: 1px solid var(--qc-border); cursor: pointer; user-select: none; white-space: nowrap; }
+.qc-table th:hover { color: var(--qc-text); background: var(--qc-surface); }
+.qc-table th.sorted { color: var(--qc-accent); }
+.qc-table td { padding: 10px 12px; border-bottom: 1px solid var(--qc-border); }
+.qc-table tr:hover td { background: var(--qc-surface); }
+.qc-table .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--qc-font-mono); }
+
+/* Command palette */
+#cmdk-list .qc-cmd-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.12s; }
+#cmdk-list .qc-cmd-item:hover, #cmdk-list .qc-cmd-item.active { background: #1e293b; }
+#cmdk-list .qc-cmd-item.active { outline: 1px solid #334155; }
+
+/* Toasts */
+.qc-toast { pointer-events: auto; display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; box-shadow: var(--qc-shadow); min-width: 320px; max-width: 420px; animation: qc-toast-in 0.2s ease; }
+@keyframes qc-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.qc-toast.success { border-left: 3px solid #10b981; }
+.qc-toast.error { border-left: 3px solid #ef4444; }
+.qc-toast.info { border-left: 3px solid #3b82f6; }
+
+/* Skeleton */
+.qc-skeleton { background: linear-gradient(90deg, var(--qc-surface) 25%, var(--qc-surface-hover) 50%, var(--qc-surface) 75%); background-size: 200% 100%; animation: qc-shimmer 1.2s infinite; border-radius: 8px; }
+@keyframes qc-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Ultrawide */
 @media (min-width: 2000px) {
-  /* Expand the main workspace to use 92% of the screen, capped at 3200px */
-  main.container {
-    max-width: min(92%, 3200px) !important;
-  }
-
-  /* Expand the navbar, but cap it slightly tighter than the main content
-     so the navigation links don't stretch across 3 feet of desk space */
-  nav > .container {
-    max-width: min(85%, 2800px) !important;
-  }
+  main > div { max-width: min(92%, 1800px) !important; }
 }
-
-@media (min-width: 2800px) {
-  /* For absolute monster setups, ensure we don't stretch text to unreadable widths */
-  main.container {
-    max-width: 3200px !important;
-  }
-}
-
-/* Dynamic Grid Breathing:
-   On ultrawide, give the cards a bit more breathing room */
 @media (min-width: 2500px) {
   .gap-6 { gap: 2.5rem !important; }
-  .gap-4 { gap: 2rem !important; }
-
-  /* Prevent Plotly charts from becoming excessively tall when stretched horizontally */
-  .js-plotly-plot {
-    max-height: 650px;
-  }
+  .js-plotly-plot { max-height: 650px; }
 }

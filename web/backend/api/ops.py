@@ -15,26 +15,31 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '
 
 @router.get("/api/cio/metrics")
 async def get_cio_metrics():
-    ledger_state = await asyncio.to_thread(state.paper_broker.ledger.get_state)
-    trades = await asyncio.to_thread(state.paper_broker.ledger.get_recent_trades, 1000)
-    total_pnl = ledger_state["cash"] - ledger_state["initial_cash"]
-    total_slip = sum(t[5] for t in trades)
-    trades_executed = len(trades)
-    vetoes = 0
     try:
-        with open("data/quant_daemon.log", "r") as f:
-            vetoes = f.read().count("[SATELLITE VETO]")
-    except Exception:
-        pass
-    return {
-        "total_pnl": total_pnl,
-        "execution_alpha_bps": max(0, 15.0 - (total_slip / max(1, trades_executed))),
-        "slippage_cost_bps": total_slip,
-        "vetoes_triggered": vetoes,
-        "capital_protected": vetoes * 2500.0,
-        "sharpe_30d": 1.5 + (total_pnl / 100000),
-        "trades_executed": trades_executed
-    }
+        if state.paper_broker is None:
+            return {"error": "Broker unavailable", "total_pnl": 0, "execution_alpha_bps": 0, "slippage_cost_bps": 0, "vetoes_triggered": 0, "capital_protected": 0, "sharpe_30d": 0, "trades_executed": 0}
+        ledger_state = await asyncio.to_thread(state.paper_broker.ledger.get_state)
+        trades = await asyncio.to_thread(state.paper_broker.ledger.get_recent_trades, 1000)
+        total_pnl = ledger_state["cash"] - ledger_state["initial_cash"]
+        total_slip = sum(t[5] for t in trades) if trades else 0
+        trades_executed = len(trades)
+        vetoes = 0
+        try:
+            with open("data/quant_daemon.log", "r") as f:
+                vetoes = f.read().count("[SATELLITE VETO]")
+        except Exception:
+            pass
+        return {
+            "total_pnl": total_pnl,
+            "execution_alpha_bps": max(0, 15.0 - (total_slip / max(1, trades_executed))),
+            "slippage_cost_bps": total_slip,
+            "vetoes_triggered": vetoes,
+            "capital_protected": vetoes * 2500.0,
+            "sharpe_30d": 1.5 + (total_pnl / 100000),
+            "trades_executed": trades_executed
+        }
+    except Exception as e:
+        return {"error": str(e), "total_pnl": 0, "execution_alpha_bps": 0, "slippage_cost_bps": 0, "vetoes_triggered": 0, "capital_protected": 0, "sharpe_30d": 0, "trades_executed": 0}
 
 
 @router.post("/api/ops/kill_switch")
