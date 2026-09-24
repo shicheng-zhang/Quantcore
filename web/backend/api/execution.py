@@ -24,8 +24,11 @@ STATIC_JSON = os.path.join(BASE_DIR, "data", "nexus_telemetry.json")
 
 @router.post("/api/execution/simulate")
 async def simulate_execution(req: ExecutionRequest):
-    from quantcore.execution.algos import ExecutionEngine
-    return await asyncio.to_thread(ExecutionEngine.simulate_execution, req.symbol, req.shares, req.algo)
+    try:
+        from quantcore.execution.algos import ExecutionEngine
+        return await asyncio.to_thread(ExecutionEngine.simulate_execution, req.symbol, req.shares, req.algo)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/nexus/telemetry")
@@ -83,30 +86,52 @@ async def ghost_status():
 
 @router.get("/api/day_trading/analyze/{symbol}")
 async def analyze_intraday(symbol: str, interval: str = "5m", period: str = "5d"):
-    return await asyncio.to_thread(state.day_trading_engine.analyze, symbol, interval, period)
+    try:
+        if state.day_trading_engine is None:
+            return {"error": "Day trading engine unavailable"}
+        return await asyncio.to_thread(state.day_trading_engine.analyze, symbol, interval, period)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/intraday/backtest/{symbol}")
 async def run_intraday_backtest(symbol: str, interval: str = "5m"):
-    return await asyncio.to_thread(state.intraday_bt.run_orb, symbol, "5d", interval)
+    try:
+        if state.intraday_bt is None:
+            return {"error": "Backtester unavailable"}
+        return await asyncio.to_thread(state.intraday_bt.run_orb, symbol, "5d", interval)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.post("/api/day_trading/scalp")
 async def execute_scalp(order: PaperOrder, _: None = Depends(require_control_access)):
-    result = await asyncio.to_thread(
-        state.paper_broker.submit_order, order.symbol, order.side, order.qty, "VWAP"
-    )
-    if result.get("status") == "FILLED":
-        asyncio.create_task(state.broadcast_tape(result))
-    return result
+    try:
+        if state.paper_broker is None:
+            return {"status": "REJECTED", "reason": "Broker unavailable"}
+        result = await asyncio.to_thread(
+            state.paper_broker.submit_order, order.symbol, order.side, order.qty, "VWAP"
+        )
+        if result.get("status") == "FILLED":
+            asyncio.create_task(state.broadcast_tape(result))
+        return result
+    except Exception as e:
+        return {"status": "REJECTED", "reason": str(e)}
 
 
 @router.get("/api/day_trading/alerts")
 async def get_tactical_alerts():
-    symbols = await asyncio.to_thread(state.analytics.get_symbols)
-    universe = symbols[:15]
-    alerts = await asyncio.to_thread(state.tactical_engine.scan_universe, universe)
-    return {"alerts": alerts, "timestamp": time.time(), "scanned": len(universe)}
+    try:
+        symbols = await asyncio.to_thread(state.analytics.get_symbols) if state.analytics else []
+        universe = symbols[:15] if symbols else []
+        if not universe:
+            return {"alerts": [], "timestamp": time.time(), "scanned": 0, "note": "No symbols in universe"}
+        if state.tactical_engine is None:
+            return {"alerts": [], "timestamp": time.time(), "scanned": 0, "error": "Scanner unavailable"}
+        alerts = await asyncio.to_thread(state.tactical_engine.scan_universe, universe)
+        return {"alerts": alerts, "timestamp": time.time(), "scanned": len(universe)}
+    except Exception as e:
+        return {"alerts": [], "timestamp": time.time(), "scanned": 0, "error": str(e)}
 
 
 @router.post("/api/rl/train")

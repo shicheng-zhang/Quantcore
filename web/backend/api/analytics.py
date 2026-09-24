@@ -11,47 +11,74 @@ router = APIRouter(tags=["analytics"])
 
 @router.get("/api/overview")
 async def get_overview():
-    return await asyncio.to_thread(state.analytics.get_overview)
+    try:
+        return await asyncio.to_thread(state.analytics.get_overview)
+    except Exception as e:
+        return {"error": str(e), "total_symbols": 0, "latest_prices": {}, "system_status": "Degraded"}
 
 
 @router.get("/api/symbols")
 async def get_symbols():
-    return await asyncio.to_thread(state.analytics.get_symbols)
+    try:
+        return await asyncio.to_thread(state.analytics.get_symbols)
+    except Exception as e:
+        return []
 
 
 @router.get("/api/trend/{symbol}")
 async def get_trend(symbol: str, period: str = "1y", interval: str = "1d"):
-    return await asyncio.to_thread(state.analytics.get_trend_analysis, symbol, period, interval)
+    try:
+        return await asyncio.to_thread(state.analytics.get_trend_analysis, symbol, period, interval)
+    except Exception as e:
+        return {"error": str(e), "symbol": symbol}
 
 
 @router.get("/api/predictions/{symbol}")
 async def get_predictions(symbol: str, period: str = "1y", interval: str = "1d"):
-    return await asyncio.to_thread(state.analytics.get_predictions, symbol, period, interval)
+    try:
+        return await asyncio.to_thread(state.analytics.get_predictions, symbol, period, interval)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/predictions/advanced/{symbol}")
 async def get_advanced_predictions(symbol: str, period: str = "1y", interval: str = "1d", horizon: int = 10):
-    return await asyncio.to_thread(state.analytics.get_advanced_predictions, symbol, period, interval, horizon)
+    try:
+        return await asyncio.to_thread(state.analytics.get_advanced_predictions, symbol, period, interval, horizon)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/predictions/review/{symbol}")
 async def get_prediction_review(symbol: str, period: str = "1y", interval: str = "1d", bars: int = 40):
-    return await asyncio.to_thread(state.analytics.get_prediction_review, symbol, period, interval, bars)
+    try:
+        return await asyncio.to_thread(state.analytics.get_prediction_review, symbol, period, interval, bars)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/predictions/screener")
 async def get_prediction_screener(interval: str = "1d", period: str = "1y"):
-    return await asyncio.to_thread(state.analytics.get_prediction_screener, interval, period)
+    try:
+        return await asyncio.to_thread(state.analytics.get_prediction_screener, interval, period)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.get("/api/signals")
 async def get_signals():
-    return await asyncio.to_thread(state.analytics.get_recent_signals)
+    try:
+        return await asyncio.to_thread(state.analytics.get_recent_signals)
+    except Exception:
+        return []
 
 
 @router.get("/api/performance")
 async def get_performance():
-    return await asyncio.to_thread(state.analytics.get_performance_metrics)
+    try:
+        return await asyncio.to_thread(state.analytics.get_performance_metrics)
+    except Exception as e:
+        return {"error": str(e), "total_trades": 0}
 
 
 @router.post("/api/symbols")

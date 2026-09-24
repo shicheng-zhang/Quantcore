@@ -2,68 +2,104 @@
 {% block title %}Dashboard - QuantCore{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Total Symbols</h3>
-        <p class="text-3xl font-bold text-blue-400" id="total-symbols">-</p>
+<!-- Power-user toolbar -->
+<div class="flex flex-wrap items-center gap-2 mb-6">
+    <div class="flex items-center gap-2">
+        <h1 class="text-xl font-extrabold tracking-tight text-white">Dashboard</h1>
+        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">PRO</span>
     </div>
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Active Strategies</h3>
-        <p class="text-3xl font-bold text-green-400">2</p>
-    </div>
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">System Status</h3>
-        <p class="text-3xl font-bold text-green-400" id="system-status">Active</p>
-    </div>
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-sm font-medium text-gray-400">Last Update</h3>
-        <p class="text-lg font-bold text-gray-300" id="last-update">-</p>
+    <div class="flex-1"></div>
+    <div class="flex items-center gap-1.5">
+        <button onclick="loadDashboard()" class="qc-icon-btn !w-auto px-3 gap-1.5" title="Refresh (R)"><span class="text-xs">↻</span><span class="text-xs font-bold hidden sm:inline">Refresh</span></button>
+        <button onclick="exportDashboard()" class="qc-icon-btn !w-auto px-3 gap-1.5" title="Export JSON (Y)"><span class="text-xs">⤓</span><span class="text-xs font-bold hidden sm:inline">Export</span></button>
+        <button onclick="document.getElementById('cmdk-trigger')?.click()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111827] border border-[#1e293b] text-xs text-slate-400 hover:text-slate-200">⌘K <span class="hidden lg:inline">jump…</span></button>
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h2 class="text-xl font-bold mb-4">Latest Prices</h2>
-        <div id="latest-prices" class="space-y-3"></div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="qc-card p-4 border-l-4 !border-l-blue-500">
+        <div class="flex items-center justify-between"><h3 class="text-[11px] font-bold tracking-widest uppercase text-slate-400">Total Symbols</h3><span class="text-[11px] text-slate-500 font-mono">G D</span></div>
+        <p class="text-2xl font-black font-mono text-white mt-1" id="total-symbols"><span class="qc-skeleton inline-block w-12 h-7"></span></p>
+        <p class="text-xs text-slate-500 mt-1">Double-click row to copy</p>
     </div>
+    <div class="qc-card p-4 border-l-4 !border-l-emerald-500">
+        <div class="flex items-center justify-between"><h3 class="text-[11px] font-bold tracking-widest uppercase text-slate-400">Active Strategies</h3><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span></div>
+        <p class="text-2xl font-black text-emerald-400 mt-1">2</p>
+        <p class="text-xs text-slate-500">Press <kbd class="qc-kbd">G</kbd> <kbd class="qc-kbd">P</kbd> → Paper</p>
+    </div>
+    <div class="qc-card p-4 border-l-4 !border-l-cyan-500">
+        <h3 class="text-[11px] font-bold tracking-widest uppercase text-slate-400">System Status</h3>
+        <p class="text-2xl font-black text-emerald-400 mt-1" id="system-status">Active</p>
+        <p class="text-xs text-slate-500" id="status-detail">All engines nominal</p>
+    </div>
+    <div class="qc-card p-4 border-l-4 !border-l-violet-500">
+        <h3 class="text-[11px] font-bold tracking-widest uppercase text-slate-400">Last Update</h3>
+        <p class="text-sm font-mono font-bold text-white mt-1" id="last-update"><span class="qc-skeleton inline-block w-32 h-4"></span></p>
+        <p class="text-xs text-slate-500">Auto-refresh 30s • polling</p>
+    </div>
+</div>
 
-
-    <div class="bg-gray-800 rounded-lg p-6">
-        <h2 class="text-xl font-bold mb-4">Manage Universe</h2>
-        <div class="flex gap-2 mb-4">
-            <input type="text" id="new-symbol" placeholder="e.g. TSLA" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 flex-grow text-white">
-            <button onclick="addSymbol(this)" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold">Add</button>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="qc-card p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold tracking-tight text-white">Latest Prices</h2>
+            <span class="text-[11px] text-slate-500">Click header to sort • dbl-click row to copy</span>
         </div>
-        <div id="universe-list" class="space-y-2 max-h-64 overflow-y-auto pr-2"></div>
+        <div id="latest-prices" class="space-y-2 min-h-[120px]"></div>
     </div>
 
-
-        <div class="bg-gray-800 rounded-lg p-6">
-        <h2 class="text-xl font-bold mb-4">Recent Signals</h2>
-        <div id="recent-signals" class="space-y-2"></div>
+    <div class="qc-card p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold tracking-tight text-white">Manage Universe</h2>
+            <span class="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">/</span>
+        </div>
+        <div class="flex gap-2 mb-3">
+            <input type="text" id="new-symbol" placeholder="e.g. TSLA — hit Enter" aria-label="Add symbol" class="bg-[#0a0f1c] border border-[#1e293b] rounded-lg px-3 py-2 flex-grow text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+            <button onclick="addSymbol(this)" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-bold text-sm text-white transition-colors">Add</button>
+        </div>
+        <div id="universe-list" class="space-y-1.5 max-h-64 overflow-y-auto pr-1 qc-scrollbar"></div>
     </div>
-</div>
 
-<div class="mt-6 bg-gray-800 rounded-lg p-6">
-    <h2 class="text-xl font-bold mb-4">Performance Metrics</h2>
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="performance-metrics"></div>
+    <div class="qc-card p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold tracking-tight text-white">Recent Signals</h2>
+            <a href="/signals" class="text-xs text-blue-400 hover:text-blue-300">View all →</a>
+        </div>
+        <div id="recent-signals" class="space-y-1.5 min-h-[120px]"></div>
+    </div>
+    <div class="qc-card p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold tracking-tight text-white">Performance Metrics</h2>
+            <button onclick="exportDashboard()" class="text-xs text-slate-400 hover:text-slate-200">Export JSON</button>
+        </div>
+        <div class="grid grid-cols-2 gap-3" id="performance-metrics"></div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _dashData = null;
+function exportDashboard() {
+  if (!_dashData) return toast('No data to export','info');
+  const blob = new Blob([JSON.stringify(_dashData, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `quantcore-dashboard-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  URL.revokeObjectURL(url); toast('Exported JSON','success');
+}
 async function loadDashboard() {
     try {
-        
+        // Skeleton
+        document.getElementById('latest-prices').innerHTML = '<div class="qc-skeleton h-6 w-full"></div><div class="qc-skeleton h-6 w-full mt-2"></div>';
         // Populate Universe List
         const symbols = await fetch('/api/symbols').then(r => r.json());
         const universeDiv = document.getElementById('universe-list');
         universeDiv.innerHTML = '';
         symbols.forEach(s => {
             universeDiv.innerHTML += `
-                <div class="flex justify-between items-center bg-gray-700 rounded px-3 py-1">
-                    <span class="font-medium">${s}</span>
-                    <button onclick="removeSymbol('${s}')" class="text-red-400 hover:text-red-300 font-bold">✕</button>
+                <div class="flex justify-between items-center bg-[#0a0f1c] border border-[#1e293b] rounded-lg px-3 py-2 hover:border-[#2d3a4e] transition-colors">
+                    <span class="font-mono font-bold text-white">${s}</span>
+                    <button onclick="removeSymbol('${s}')" class="qc-icon-btn !w-7 !h-7 text-red-400" aria-label="Remove ${s}">✕</button>
                 </div>`;
         });
 
@@ -71,46 +107,50 @@ async function loadDashboard() {
         const signals = await fetch('/api/signals').then(r => r.json());
         const performance = await fetch('/api/performance').then(r => r.json());
 
+        _dashData = {overview, signals, performance, symbols};
         document.getElementById('total-symbols').textContent = overview.total_symbols;
         document.getElementById('last-update').textContent = new Date(overview.last_update).toLocaleString();
-
-        // Latest prices
+        document.getElementById('footer-symbols').textContent = `${overview.total_symbols} symbols`;
+        // Latest prices - sortable mini-table
         const pricesDiv = document.getElementById('latest-prices');
         pricesDiv.innerHTML = '';
-        for (const [symbol, price] of Object.entries(overview.latest_prices)) {
-            pricesDiv.innerHTML += `
-                <div class="flex justify-between items-center">
-                    <span class="font-medium">${symbol}</span>
-                    <span class="text-green-400">$${price.toFixed(2)}</span>
-                </div>
-            `;
+        const entries = Object.entries(overview.latest_prices);
+        if (entries.length===0) pricesDiv.innerHTML = '<p class="text-sm text-slate-500">No prices — add symbols or check provider</p>';
+        for (const [symbol, price] of entries) {
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center px-3 py-2 rounded-lg bg-[#0a0f1c] border border-[#1e293b] hover:border-[#2d3a4e] cursor-pointer transition-colors';
+            row.title = 'Double-click to copy';
+            row.innerHTML = `<span class="font-mono font-bold text-white">${symbol}</span><span class="font-mono text-emerald-400">$${price.toFixed(2)}</span>`;
+            row.addEventListener('dblclick', ()=> { navigator.clipboard.writeText(`${symbol} $${price.toFixed(2)}`); toast('Copied','success'); });
+            row.addEventListener('click', ()=> location.href = `/trends?symbol=${symbol}`);
+            pricesDiv.appendChild(row);
         }
 
         // Recent signals
         const signalsDiv = document.getElementById('recent-signals');
         signalsDiv.innerHTML = '';
+        if (signals.length===0) signalsDiv.innerHTML = '<p class="text-sm text-slate-500">No signals yet</p>';
         signals.slice(0, 5).forEach(sig => {
-            const color = sig.type === 'BUY' ? 'text-green-400' : 'text-red-400';
-            signalsDiv.innerHTML += `
-                <div class="flex justify-between items-center text-sm">
-                    <span>${sig.symbol}</span>
-                    <span class="${color} font-bold">${sig.type}</span>
-                    <span class="text-gray-400">$${sig.price.toFixed(2)}</span>
-                </div>
-            `;
+            const color = sig.type === 'BUY' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-red-400 bg-red-500/10 border-red-500/20';
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center text-sm px-3 py-2 rounded-lg bg-[#0a0f1c] border border-[#1e293b] hover:border-[#2d3a4e] cursor-pointer';
+            row.innerHTML = `<span class="font-mono font-bold text-white">${sig.symbol}</span><span class="px-2 py-0.5 rounded text-xs font-bold border ${color}">${sig.type}</span><span class="font-mono text-slate-300">$${sig.price.toFixed(2)}</span>`;
+            row.addEventListener('click', ()=> location.href = `/signals`);
+            row.addEventListener('dblclick', ()=> { navigator.clipboard.writeText(JSON.stringify(sig)); toast('Signal copied','success'); });
+            signalsDiv.appendChild(row);
         });
 
         // Performance metrics
         const metricsDiv = document.getElementById('performance-metrics');
         metricsDiv.innerHTML = '';
         for (const [key, value] of Object.entries(performance)) {
+            if (key==='message') continue;
             const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            metricsDiv.innerHTML += `
-                <div class="bg-gray-700 rounded p-3">
-                    <div class="text-xs text-gray-400">${label}</div>
-                    <div class="text-lg font-bold">${typeof value === 'number' ? value.toFixed(2) : value}</div>
-                </div>
-            `;
+            const display = value===null ? '—' : (typeof value === 'number' ? value.toFixed(2) : String(value));
+            const card = document.createElement('div');
+            card.className = 'qc-card p-3';
+            card.innerHTML = `<div class="text-[11px] font-bold tracking-widest uppercase text-slate-500">${label}</div><div class="text-lg font-mono font-bold text-white mt-1">${display}</div>`;
+            metricsDiv.appendChild(card);
         }
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -162,7 +202,10 @@ async function removeSymbol(symbol) {
     loadDashboard();
 }
 
+document.getElementById('new-symbol')?.addEventListener('keydown', e => { if (e.key==='Enter') addSymbol(document.querySelector('button[onclick*=\"addSymbol\"]')); });
+window.qcPoll('/api/overview', (data)=> { /* realtime latency tracked globally */ }, 30000);
 loadDashboard();
-setInterval(loadDashboard, 30000); // Refresh every 30 seconds
+setInterval(loadDashboard, 30000);
+document.addEventListener('keydown', e => { if (e.key.toLowerCase()==='r' && !e.metaKey && e.ctrlKey===false && document.activeElement.tagName!=='INPUT') { e.preventDefault(); loadDashboard(); toast('Refreshed','info'); } });
 </script>
 {% endblock %}
