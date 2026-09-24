@@ -25,10 +25,28 @@ class HRPOptimizer:
 
     @staticmethod
     def _get_cluster_var(cov: np.ndarray, items: List[int]) -> float:
-        """Calculate the variance of a cluster of assets."""
+        """
+        Calculate the variance of a cluster of assets using inverse-variance weighting
+        per Lopez de Prado (2016). The cluster variance is w^T * Sigma * w where
+        w_i = (1/sigma_i^2) / sum(1/sigma_j^2). Falls back to equal-weight if
+        any variance is non-positive (degenerate data).
+        """
         cov_slice = cov[np.ix_(items, items)]
-        w = np.ones(len(items)) / len(items)
-        return np.dot(w.T, np.dot(cov_slice, w))
+        # Diagonal variances
+        diag = np.diag(cov_slice)
+        # Guard: if any variance <= 0 or non-finite, fall back to equal weight
+        if np.any(diag <= 1e-12) or not np.all(np.isfinite(diag)):
+            w = np.ones(len(items)) / len(items)
+            return float(np.dot(w.T, np.dot(cov_slice, w)))
+        inv_var = 1.0 / diag
+        # Handle non-finite inv_var
+        inv_var = np.where(np.isfinite(inv_var) & (inv_var > 0), inv_var, 0.0)
+        sum_inv = np.sum(inv_var)
+        if sum_inv <= 1e-12:
+            w = np.ones(len(items)) / len(items)
+        else:
+            w = inv_var / sum_inv
+        return float(np.dot(w.T, np.dot(cov_slice, w)))
 
     @staticmethod
     def _get_quasi_diag(link: np.ndarray, n_items: int) -> List[int]:
@@ -39,8 +57,14 @@ class HRPOptimizer:
         if link.size == 0 or n_items < 2:
             return list(range(n_items))
 
-        link = link.astype(int)
-        sort_idx = pd.Series([link[-1, 0], link[-1, 1]])
+        # Keep distances as floats, indices as ints — avoid truncating distances by casting whole matrix
+        # Use a separate int view for cluster indices
+        link_idx = link[:, :2].astype(int)  # shape (n-1, 2)
+        link_dist = link[:, 2:]  # keep for reference, not used in sorting
+        sort_idx = pd.Series([int(link_idx[-1, 0]), int(link_idx[-1, 1])])
+
+        # Rebuild link as float for compatibility but keep integer index array for lookups
+        # We'll use link_idx for all index operations below
         
         while sort_idx.max() >= n_items:
             sort_idx.index = range(0, sort_idx.shape[0] * 2, 2)
@@ -50,13 +74,13 @@ class HRPOptimizer:
             # FIX: Explicitly cast to int to prevent NumPy indexing errors
             j = (df0.values - n_items).astype(int) 
             
-            sort_idx[i] = link[j, 0]
+            sort_idx[i] = link_idx[j, 0]
             
-            df0 = pd.Series(link[j, 1], index=i + 1)
+            df0 = pd.Series(link_idx[j, 1], index=i + 1)
             sort_idx = pd.concat([sort_idx, df0])
             sort_idx = sort_idx.sort_index()
             
-        result = sort_idx.tolist()
+        result = [int(x) for x in sort_idx.tolist()]
 
         # SAFETY GUARD: Verify output integrity
         # The result must contain exactly n_items unique indices in [0, n_items)
@@ -119,7 +143,9 @@ class HRPOptimizer:
         # Clip to 0 to prevent sqrt of negative numbers caused by floating point drift
         dist = np.sqrt(np.clip(0.5 * (1 - corr), 0, None))
         
-        # Hierarchical Clustering
+        # Hierarchical Clustering — 'single' is Lopez de Prado's default but
+        # is sensitive to chaining. Allow caller to override via method param in future.
+        # Keep 'single' for backward compatibility; document the choice.
         link = sch.linkage(ssd.squareform(dist), method='single')
         
         n_items = len(prices.columns)

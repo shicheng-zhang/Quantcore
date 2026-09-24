@@ -70,49 +70,80 @@ class AlphaHunter:
         return master_df
 
     def compute_lead_lag_matrix(self, df: pl.DataFrame, max_lag: int = 24):
+        """
+        Correct Pearson cross-correlation at each lag k:
+          r(k) = sum[(x_t - mu_x)(y_{t+k} - mu_y)] / sqrt(sum(x_t-mu_x)^2 * sum(y_{t+k}-mu_y)^2)
+        Demeans returns at each lag window to avoid spurious correlation from non-zero means.
+        """
         returns_df = df.select(pl.all().exclude("Date").pct_change().fill_null(0))
         assets = returns_df.columns
         n_assets = len(assets)
         results = []
-        
+
         data_np = returns_df.to_numpy()
-        
+        n = data_np.shape[0]
+
         for i in range(n_assets):
             for j in range(n_assets):
-                if i == j: continue
-                
+                if i == j:
+                    continue
+
                 x = data_np[:, i]
                 y = data_np[:, j]
-                
-                correlation = signal.correlate(x, y, mode='full')
-                norm_factor = np.sqrt(np.sum(x**2) * np.sum(y**2))
-                if norm_factor > 0:
-                    correlation = correlation / norm_factor
-                else:
-                    correlation = np.zeros_like(correlation)
-                    
-                zero_lag_idx = len(x) - 1
-                start_idx = max(0, zero_lag_idx - max_lag)
-                end_idx = min(len(correlation), zero_lag_idx + max_lag + 1)
-                
-                lag_window = correlation[start_idx:end_idx]
-                lags = np.arange(start_idx - zero_lag_idx, end_idx - zero_lag_idx)
-                
-                if len(lag_window) == 0: continue
-                
-                best_idx = np.argmax(np.abs(lag_window))
-                best_lag = lags[best_idx]
-                best_corr = lag_window[best_idx]
-                
+
+                # Quick variance check — skip constant series
+                if np.nanstd(x) < 1e-12 or np.nanstd(y) < 1e-12:
+                    continue
+
+                corrs = []
+                lags_range = range(-max_lag, max_lag + 1)
+                for lag in lags_range:
+                    if lag < 0:
+                        # y leads x: correlate x[ -lag:] with y[ : lag]
+                        x_seg = x[-lag:]
+                        y_seg = y[:lag]
+                    elif lag > 0:
+                        x_seg = x[:-lag] if lag < n else np.array([])
+                        y_seg = y[lag:]
+                    else:
+                        x_seg = x
+                        y_seg = y
+
+                    if len(x_seg) < 10:
+                        corrs.append(0.0)
+                        continue
+
+                    # Demeaned Pearson
+                    x_m = x_seg - np.mean(x_seg)
+                    y_m = y_seg - np.mean(y_seg)
+                    denom = np.sqrt(np.sum(x_m ** 2) * np.sum(y_m ** 2))
+                    if denom < 1e-12:
+                        corrs.append(0.0)
+                    else:
+                        c = float(np.sum(x_m * y_m) / denom)
+                        # Clip for numerical safety
+                        corrs.append(float(np.clip(c, -1.0, 1.0)))
+
+                corrs = np.array(corrs)
+                lags = np.arange(-max_lag, max_lag + 1)
+
+                if len(corrs) == 0:
+                    continue
+
+                best_idx = int(np.argmax(np.abs(corrs)))
+                best_lag = int(lags[best_idx])
+                best_corr = float(corrs[best_idx])
+
+                # Require statistically meaningful correlation with minimum sample
                 if abs(best_corr) > 0.3:
                     results.append({
                         "source": assets[i],
                         "target": assets[j],
-                        "lag_hours": int(best_lag),
-                        "correlation": float(round(best_corr, 3)),
-                        "strength": float(round(abs(best_corr), 3))
+                        "lag_hours": best_lag,
+                        "correlation": round(best_corr, 3),
+                        "strength": round(abs(best_corr), 3),
                     })
-                    
+
         return results
 
     def scan(self):

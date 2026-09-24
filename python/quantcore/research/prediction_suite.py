@@ -75,12 +75,12 @@ class AdvancedPredictor:
         rs = gain / loss.replace(0, 1e-9)
         df["RSI"] = 100 - (100 / (1 + rs))
 
-        # ATR (14)
+        # ATR (14) — Wilder's RMA (exponentially smoothed, not SMA) to match trading standards
         tr1 = high - low
         tr2 = (high - close.shift()).abs()
         tr3 = (low - close.shift()).abs()
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        df["ATR"] = tr.rolling(window=14).mean().bfill()
+        df["ATR"] = tr.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean().bfill()
 
         # Bollinger Bands (20, 2.0)
         sma20 = close.rolling(window=20).mean()
@@ -289,9 +289,12 @@ class AdvancedPredictor:
             z = np.random.normal(0, 1, num_paths)
             jumps = np.random.poisson(lambda_jump * dt, num_paths) * np.random.normal(0, jump_std, num_paths)
 
+            # Correct OU drift for log-price: mr_drift = theta*(log(gravity) - log(P))
+            # Convert to return space: d log P = theta*(log(gravity/P)) dt
             mr_drift = 0.0
-            if gravity_target is not None and theta > 0:
-                mr_drift = theta * (gravity_target - paths[:, t - 1]) / np.maximum(paths[:, t - 1], 1e-6)
+            if gravity_target is not None and theta > 0 and gravity_target > 1e-6:
+                # Log-distance reversion: dimensionless, no division by price level
+                mr_drift = theta * np.log(np.maximum(gravity_target, 1e-6) / np.maximum(paths[:, t - 1], 1e-6))
 
             drift_term = (mu + mr_drift - 0.5 * (sigma ** 2)) * dt
             diffusion = sigma * math.sqrt(dt) * z
@@ -730,7 +733,8 @@ class AdvancedPredictor:
         gravity_target = (mu * 0.6) + (poc * 0.4)
 
         for step in range(1, horizon_steps + 1):
-            d_ou = theta * (gravity_target - curr_p_ou) * dt * 10.0
+            # OU Euler without arbitrary *10 factor: dP = theta*(mu - P)*dt
+            d_ou = theta * (gravity_target - curr_p_ou) * dt
             curr_p_ou += d_ou
             ou_path.append(curr_p_ou)
 
