@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <mutex>
 
 namespace nexus {
 
@@ -36,7 +37,9 @@ public:
     }
 
     void append_event(uint64_t timestamp, const std::string& type, double val1, double val2) {
-    // Auto-rotate log if it exceeds 50MB to prevent disk/GitHub bloat
+        // Thread-safe append with mutex (ledger is shared across engine + micro threads)
+        std::lock_guard<std::mutex> lock(mutex_);
+        // Auto-rotate log if it exceeds 50MB to prevent disk bloat
         std::ifstream check_size(log_path_, std::ios::binary | std::ios::ate);
         if (check_size.good()) {
             std::streamsize sz = check_size.tellg();
@@ -49,12 +52,14 @@ public:
                 seq_counter_ = 0;
             }
         }
-        // Build hash chain
-        uint64_t payload_hash = std::hash<std::string>{}(type) ^
+        // Build hash chain — use FNV-1a over type string bytes, not std::hash (implementation-defined)
+        uint64_t payload_hash = fnv1a_hash(type) ^
                                static_cast<uint64_t>(val1 * 1e6) ^
                                static_cast<uint64_t>(val2 * 1e6) ^
                                timestamp;
-        current_hash_ = current_hash_ * 0x853C4897BE55F873ULL + payload_hash; // FNV-1a style mix
+        // Include prev_hash in mix for chain linking (more robust than just sequencing)
+        current_hash_ = current_hash_ * 0x853C4897BE55F873ULL + payload_hash;
+        current_hash_ ^= prev_hash_ * 0x9E3779B97F4A7C15ULL; // golden ratio mix
 
         LogEntry entry;
         entry.seq = ++seq_counter_;
@@ -94,6 +99,16 @@ public:
         return ss.str();
     }
 
+    // Deterministic FNV-1a 64-bit hash — stable across compilers/runs
+    static uint64_t fnv1a_hash(const std::string& s) {
+        uint64_t h = 14695981039346656037ULL;
+        for (unsigned char c : s) {
+            h ^= c;
+            h *= 1099511628211ULL;
+        }
+        return h;
+    }
+
 private:
     struct LogEntry {
         uint64_t seq;
@@ -108,6 +123,7 @@ private:
     uint64_t seq_counter_ = 0;
     size_t file_size_ = 0;
     uint64_t last_hash_ = 0;
+    std::mutex mutex_;
 };
 
 } // namespace nexus

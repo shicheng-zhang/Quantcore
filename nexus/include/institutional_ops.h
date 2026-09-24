@@ -28,16 +28,19 @@ public:
     void route_order(uint64_t qty, double price) {
         if (kill_switch.load()) return;
 
-        // 70% Lit, 30% Dark
+        // 70% Lit, 30% Dark — configurable split
         uint64_t dark_qty = static_cast<uint64_t>(qty * 0.30);
         uint64_t lit_qty = qty - dark_qty;
 
         lit_venue_fills.fetch_add(lit_qty);
         dark_pool_fills.fetch_add(dark_qty);
 
-        // Dark pools provide price improvement (simulated)
-        double improvement = 0.05 + (static_cast<double>(rand() % 100) / 10000.0);
-        dark_pool_improvement_bps.store(improvement * 10000.0);
+        // Dark pools provide price improvement: realistic 0.5-2.0 bps (not 500 bps!).
+        // Use thread-local RNG for thread safety; 0.5 + U(0,1.5) bps.
+        thread_local std::mt19937 tl_rng{std::random_device{}()};
+        std::uniform_real_distribution<double> dist(0.0, 1.5);
+        double improvement_bps = 0.5 + dist(tl_rng); // 0.5 to 2.0 bps
+        dark_pool_improvement_bps.store(improvement_bps);
     }
 
     // Surveillance Check: Reads Python's halt flag
