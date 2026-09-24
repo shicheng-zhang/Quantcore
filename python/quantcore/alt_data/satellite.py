@@ -63,6 +63,22 @@ class SatelliteEngine:
         except Exception:
             return None
 
+    def _score_with_conf(self, text):
+        """Returns (compound, confidence) or (None, None) if unavailable."""
+        try:
+            if self._vader is None:
+                try:
+                    from python.quantcore.nlp.vader_engine import VaderEngine
+                except ImportError:
+                    from quantcore.nlp.vader_engine import VaderEngine
+                self._vader = VaderEngine()
+            if hasattr(self._vader, 'score_with_confidence'):
+                c, conf = self._vader.score_with_confidence(text)
+                return float(c), float(conf)
+            return float(self._vader.analyze(text)), 0.85
+        except Exception:
+            return None, None
+
     def fetch_live_news(self):
         """Fetch real financial headlines via RSS with a HARD timeout.
 
@@ -134,16 +150,16 @@ class SatelliteEngine:
             "signal": flow_signal, "exchange_inflow_usd": round(abs(whale_flow_btc) * 65000, 2)
         })
 
-        # 3. Live RSS news, scored by VADER (no more hardcoded 0.0)
+        # 3. Live RSS news, scored by VADER with calibrated confidence
         try:
             for news in self.fetch_live_news():
-                s = self._score(news["headline"])
+                s, conf = self._score_with_conf(news["headline"])
                 feed.insert(0, {
                     "type": "NEWS_SENTIMENT",
                     "timestamp": datetime.now().isoformat(),
                     "headline": news["headline"],
                     "sentiment_score": round(s, 3) if s is not None else 0.0,
-                    "confidence": 0.95,
+                    "confidence": round(conf, 3) if conf is not None else 0.75,
                     "entities": ["MACRO", "LIVE"]
                 })
         except Exception as e:
