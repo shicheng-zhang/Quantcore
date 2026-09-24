@@ -29,7 +29,7 @@ bool safe_query_sql(const std::string& sql) {
 
 PYBIND11_MODULE(quantcore_cpp, m) {
     m.doc() = "QuantCore C++ Engine";
-    m.def("version", []() { return "1.1.0"; });
+    m.def("version", []() { return "1.2.0"; });
     m.def("thread_count", []() { return std::thread::hardware_concurrency(); });
 
     py::enum_<Side>(m, "Side").value("BUY", Side::BUY).value("SELL", Side::SELL);
@@ -65,9 +65,36 @@ PYBIND11_MODULE(quantcore_cpp, m) {
         .def_static("rolling_mean", &FeatureEngine::rolling_mean_avx512)
         .def_static("rolling_std", &FeatureEngine::rolling_std_avx512)
         .def_static("rolling_zscore", &FeatureEngine::rolling_zscore_avx512)
-        .def_static("order_book_imbalance", &FeatureEngine::order_book_imbalance);
+        .def_static("order_book_imbalance", &FeatureEngine::order_book_imbalance)
+        .def_static("queue_imbalance", &FeatureEngine::queue_imbalance)
+        .def_static("cumulative_delta", &FeatureEngine::cumulative_delta)
+        .def_static("delta_imbalance", &FeatureEngine::delta_imbalance)
+        .def_static("kyle_lambda", &FeatureEngine::kyle_lambda, py::arg("price_changes"), py::arg("signed_volumes"), py::arg("window")=20)
+        .def_static("effective_spread_bps", &FeatureEngine::effective_spread_bps)
+        .def_static("vpin", &FeatureEngine::vpin, py::arg("buy_volumes"), py::arg("sell_volumes"), py::arg("buckets")=50)
+        .def_static("intraday_volume_profile", &FeatureEngine::intraday_volume_profile, py::arg("prices"), py::arg("volumes"), py::arg("bins")=24)
+        .def_static("rvol", &FeatureEngine::rvol)
+        .def_static("parkinson_volatility", &FeatureEngine::parkinson_volatility, py::arg("highs"), py::arg("lows"), py::arg("window")=20)
+        .def_static("garman_klass_volatility", &FeatureEngine::garman_klass_volatility);
 
-    py::class_<RiskConfig>(m, "RiskConfig").def(py::init<>()).def_readwrite("max_position_pct", &RiskConfig::max_position_pct).def_readwrite("max_daily_loss_pct", &RiskConfig::max_daily_loss_pct).def_readwrite("max_drawdown_pct", &RiskConfig::max_drawdown_pct);
+    py::class_<RiskConfig>(m, "RiskConfig")
+        .def(py::init<>())
+        .def_readwrite("max_position_pct", &RiskConfig::max_position_pct)
+        .def_readwrite("max_daily_loss_pct", &RiskConfig::max_daily_loss_pct)
+        .def_readwrite("max_drawdown_pct", &RiskConfig::max_drawdown_pct)
+        .def_readwrite("max_intraday_loss_pct", &RiskConfig::max_intraday_loss_pct)
+        .def_readwrite("max_trades_per_day", &RiskConfig::max_trades_per_day)
+        .def_readwrite("max_consecutive_losses", &RiskConfig::max_consecutive_losses)
+        .def_readwrite("max_position_hold_minutes", &RiskConfig::max_position_hold_minutes);
     py::class_<RiskResult>(m, "RiskResult").def_readonly("decision", &RiskResult::decision).def_readonly("reason", &RiskResult::reason);
-    py::class_<RiskEngine>(m, "RiskEngine").def(py::init<const RiskConfig&, EventBus&>()).def("check_order", &RiskEngine::check_order).def("update_portfolio", &RiskEngine::update_portfolio).def("is_halted", &RiskEngine::is_halted);
+    py::class_<RiskEngine>(m, "RiskEngine")
+        .def(py::init<const RiskConfig&, EventBus&>())
+        .def("check_order", &RiskEngine::check_order)
+        .def("update_portfolio", &RiskEngine::update_portfolio)
+        .def("record_trade_result", &RiskEngine::record_trade_result)
+        .def("is_halted", &RiskEngine::is_halted)
+        .def("reset_day", &RiskEngine::reset_day)
+        .def("reset_halt", &RiskEngine::reset_halt)
+        .def("trades_today", &RiskEngine::trades_today)
+        .def("consecutive_losses", &RiskEngine::consecutive_losses);
 }

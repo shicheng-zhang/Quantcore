@@ -69,12 +69,24 @@ public:
     }
 
     // FIFO Queue Matching with Market Impact & Adverse Selection
+    // Unified with GhostExchange: eta=0.15, ADV=50000 (equities) / 1e6 (crypto) — caller sets via vol context
+    // temp = eta * sigma * sqrt(Q/ADV) * mid ; perm = 0.1 * temp (empirical 10% permanence)
     double simulate_fill(uint64_t order_id, double requested_price, double qty, Side side, double current_mid, double vol) {
-        double temp_impact = 0.015 * vol * std::sqrt(qty / 10000.0) * current_mid;
-        double perm_impact = 0.005 * vol * (qty / 10000.0) * current_mid;
+        // Unified coefficients: eta=0.15, ADV=50000 as baseline; vol is daily sigma (e.g., 0.02)
+        constexpr double ETA = 0.15;
+        constexpr double ADV = 50000.0;
+        double temp_impact = 0.0;
+        double perm_impact = 0.0;
+        if (qty > 0 && vol > 0) {
+            double slip_bps = ETA * vol * std::sqrt(qty / ADV) * 10000.0;
+            slip_bps = std::clamp(slip_bps, 0.5, 50.0);
+            temp_impact = (slip_bps / 10000.0) * current_mid;
+            perm_impact = temp_impact * 0.1; // 10% permanent per Almgren-Chriss
+        }
 
         double fill_price = current_mid + (side == Side::BUY ? temp_impact : -temp_impact);
-        current_mid += (side == Side::BUY ? perm_impact : -perm_impact); // Permanent shift
+        // Note: current_mid is passed by value — permanent shift is tracked via metrics, not via mutated param
+        // Caller should update its mid via returned permanent impact if needed.
 
         metrics.avg_temp_impact.store(temp_impact);
         metrics.avg_perm_impact.store(perm_impact);

@@ -92,16 +92,23 @@ private:
     std::map<double, PriceLevel, std::greater<double>> bids_;
     std::map<double, PriceLevel> asks_;
 
+    // Quantize price to tick size (1 cent) to avoid floating epsilon collisions
+    // where 100.01 != 100.0100000001 creates duplicate levels.
+    static double quantize_price(double p) {
+        return std::round(p * 100.0) / 100.0;
+    }
+
     template <typename Book>
     static void apply(Book& book, const Event& ev) {
-        auto it = book.find(ev.price);
+        double qprice = quantize_price(ev.price);
+        auto it = book.find(qprice);
         if (ev.quantity <= 0.0) {
             // Cancel: remove the level entirely.
             if (it != book.end()) book.erase(it);
             return;
         }
         if (it == book.end()) {
-            book.emplace(ev.price, PriceLevel{ev.price, ev.quantity, true});
+            book.emplace(qprice, PriceLevel{qprice, ev.quantity, true});
         } else {
             // Aggregate volume at an existing price level.
             it->second.total_volume += ev.quantity;
