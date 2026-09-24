@@ -27,16 +27,32 @@ class PaperBroker:
             return {"status": "REJECTED", "reason": "INVALID_PRICE"}
         price = live_price if live_price is not None else self.mock_prices.get(symbol.upper(), 100.0)
 
-        # Simulate Almgren-Chriss Slippage based on Algo
+        # Unified Almgren-Chriss slippage model:
+        #   slip_bps = eta * sigma * sqrt(Q / ADV) * 10000
+        # where eta=0.15 (market impact coeff), sigma=volatility proxy,
+        # Q=qty, ADV=average daily volume. For paper broker we use a calibrated
+        # proxy: sigma=0.02 (2% daily vol), ADV=50000 shares for equities,
+        # 1e6 for crypto. This unifies with nexus GhostExchange (eta 0.15).
+        # Algo-specific adjustments model execution quality: MARKET pays full
+        # impact, TWAP/VWAP reduce it via slicing.
+        is_crypto = "-USD" in symbol or symbol in {"BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD"}
+        adv = 1_000_000.0 if is_crypto else 50_000.0
+        sigma = 0.02  # 2% daily vol proxy; caller can pass live vol via live_price context in future
+        eta = 0.15
+        base_slip_bps = eta * sigma * np.sqrt(float(qty) / adv) * 10000.0 if qty > 0 else 0.0
+        # Algo overlays: VWAP achieves ~6.9x lower impact than MARKET (12.5/1.8)
+        # Calibrated to match historical paper_broker constants at Q=1000, ADV=50k.
         if algo == "MARKET":
-            slip_bps = 12.5
+            slip_bps = max(1.0, base_slip_bps * 3.0)  # aggressive takes full spread
             commission = 0.0
         elif algo == "VWAP":
-            slip_bps = 1.8
+            slip_bps = max(0.5, base_slip_bps * 0.43)  # VWAP slices reduce impact
             commission = qty * 0.005
-        else:
-            slip_bps = 5.0
+        else:  # TWAP
+            slip_bps = max(0.8, base_slip_bps * 1.2)
             commission = 0.0
+        # Clamp to realistic institutional bounds [0.5, 50] bps
+        slip_bps = float(np.clip(slip_bps, 0.5, 50.0))
 
         if side == "BUY":
             fill_price = price * (1 + (slip_bps / 10000.0))
