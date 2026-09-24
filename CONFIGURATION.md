@@ -14,9 +14,15 @@ data:
   parquet_views:
     market_data: "data/raw/equities/"
 risk:
-  max_position_pct: 0.05
+  max_position_pct: 0.05          # post-trade concentration (was single-order notional)
   max_daily_loss_pct: 0.03
+  max_intraday_loss_pct: 0.02     # session loss from 09:30 ET open (day-trading, NEW)
   max_drawdown_pct: 0.10
+  max_trades_per_day: 50          # throttle overtrading (NEW)
+  max_consecutive_losses: 5       # halt after N losers (NEW)
+  max_position_hold_minutes: 120  # force flat after 2h (day-trading, NEW)
+  session_start: "09:30"          # ET, for RiskEngine flat_deadline 15:55 (NEW)
+  flat_deadline: "15:55"
 ```
 
 ## Environment variables

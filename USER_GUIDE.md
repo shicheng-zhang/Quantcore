@@ -50,29 +50,37 @@ To launch just the dashboard without the TUI:
 bash run_web.sh
 ```
 
-## The dashboard
+## The dashboard (1.1 Power UI)
 
-Open http://127.0.0.1:8765. Navigation is grouped by institutional function:
+Open http://127.0.0.1:8765. Top bar: `⌘K`/ `Ctrl+K` command palette (jump anywhere, `>action`), `/` quick symbol jump, `◫▭▢` density (`compact/comfortable/spacious` → CSS `--qc-*`), `◐` theme `light/dark`, sidebar `280px` with filter, `★` favorites, recent. Footer status bar shows latency + UTC.
+
+Keyboard: `G D` Dashboard, `G P` Paper, `G T` Day Trading, `G N` Nexus, `G S` Signals, `Alt+T/D/Y` theme/density/copy, `?` help, `Esc` close. Tables: click header to sort, `dblclick` row to copy. `R` refreshes current view. `Y` copies link. All persisted in `localStorage` (`qc_prefs`, `qc_favs`, `qc_recent`).
+
+Navigation is grouped by institutional function:
 
 - **Command Center** — Dashboard, Paper Desk, CIO War Room, Signals
 - **Alpha & Research** — Trends, Predictions, Backtest Lab, Volatility Desk, Alpha Decay, Alpha Lab, StatArb Crucible, Research Lab
-- **Execution & HFT** — Execution Algos, Nexus HFT, Day Trading Desk, RL Execution
+- **Execution & HFT** — Execution Algos, Nexus HFT, Day Trading Desk (RVOL/Gap/Delta + macro gating), RL Execution
 - **Infrastructure** — Hive-Mind, Level 4 Sim, Institutional Ops, Satellite Lab, Macro Desk, Time Machine
 
 Toggle **PRO / LEARN** mode in the top-right. LEARN mode highlights concepts and opens a mini-wiki explaining each term (day-trader translation vs. Wall Street reality).
+
+> If `quantcore_cpp` not built, web still boots via Python fallback (`_FallbackFeatureEngine` — slower but functional, `200 {error}` not 500). Build for acceleration: `mkdir -p build && cmake .. && make -j$(nproc) && cp build/quantcore_cpp*.so python/quantcore/`.
 
 ## Paper trading
 
 QuantCore ships paper-only. The Paper Desk simulates fills with an Almgren-Chriss slippage model and records every fill in a DuckDB ledger. No real capital is at risk, and no broker credentials are persisted unless you explicitly connect Alpaca's paper API.
 
-## Typical workflow
+## Typical workflow (day-trading)
 
-1. Add symbols (Dashboard → Add Symbol) or rely on the seeded universe.
-2. Explore Trends and Predictions.
-3. Run a backtest in the Backtest Lab.
-4. Submit the result to the Risk Committee gauntlet.
-5. Paper-trade via the Paper Desk.
-6. Monitor execution quality in the CIO War Room.
+1. Add symbols (Dashboard → Add Symbol or `⌘K` → `>Jump to AAPL`) or rely on seeded universe.
+2. Day Trading Desk: check `RVOL` (≥1.5x), `GAP` (±1% + drive), `ORB` (true 30m), `VWAP ±1/2σ`, `DELTA` confirmation, `POC` — macro gate shows `RISK-OFF`/`STAGFLATION` filter note.
+3. Trends/Predictions: session-anchored VWAP; prediction suite uses Wilder ATR + log OU gravity.
+4. Backtest Lab → Run with `60d lookback`, then Risk Committee gauntlet (`DSR T=n_obs`, strategy-aware stress `-50/-35/-30%`, relative friction `drag<10pp`).
+5. Paper-trade via Paper Desk or Day Trading `Quick Scalp Ticket` (`SCALP LONG/SHORT` → `VWAP` `η=0.15`).
+6. Monitor `CIO War Room` (real `sharpe = mean/std·√252`), `Tactical Scanner` (`GAP UP/DOWN + DRIVE` priority, `R` refresh, `Export`), Nexus `p99` tail.
+
+Classic research workflow still: Trends → Predictions → Backtest → Gauntlet → Paper → CIO.
 
 ## What is real vs. simulated
 

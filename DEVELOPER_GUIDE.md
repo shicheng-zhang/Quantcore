@@ -7,21 +7,24 @@ cpp/            C++ analytics core compiled into quantcore_cpp.so
 nexus/          Standalone C++ HFT engine (nexus_core)
 python/         The quantcore Python package
   quantcore/
-    broker/     Paper + Alpaca brokers, DuckDB ledger
-    data/       Provider fallback, seed guard
-    portfolio/  HRP optimizer
-    research/   Backtester, DSR, StatArb, alpha hunter
-    risk/       Risk Committee gauntlet
-    vol/        Black-Scholes, vol surface
+    broker/     Paper + Alpaca brokers, DuckDB ledger (unified η=0.15)
+    data/       Provider fallback, seed guard, tick_store (DuckDB ticks/bars_1m/tod_volume)
+    portfolio/  HRP optimizer (inverse-variance)
+    research/   Backtester (lagged), DSR (Lo T=n_obs), StatArb (β+α), alpha hunter (demeaned Pearson), prediction_suite (Wilder ATR, log OU)
+    risk/       Risk Committee gauntlet (strategy-aware stress, relative friction)
+    vol/        Black-Scholes (rho, vega/theta dual), vol surface
     strategy/   Strategy base classes
-    hivemind/   Python side of the IPC daemon
-web/
-  backend/      FastAPI app + routers
-  templates/    Jinja2 pages
-  static/       CSS/JS
-config/         system.yaml
-tests/          pytest suite
-scripts/        supervisor, seed, train, live entrypoints
+    hivemind/   Python side of IPC daemon (atomic double helpers)
+    nlp/        VaderEngine score_with_confidence
+    macro/      MacroEngine (synthetic, gated)
+    day_trading/ IntradayEngine (RVOL/GAP/delta/VWAP bands/POC) + IntradaySignalEngine
+ web/
+  backend/      FastAPI app + routers (resilient state.init_state, Python fallback, 200 {error} not 500)
+  templates/    Jinja2 pages (1.1 power UI: base, dashboard, day_trading, nexus)
+  static/       CSS tokens --qc-* + JS command palette/hotkeys
+ config/         system.yaml (risk intraday fields)
+ tests/          pytest suite (covers DSR T, HRP inv-var, BS rho, ATR Wilder)
+ scripts/        supervisor, seed, train, live entrypoints
 ```
 
 ## Build
