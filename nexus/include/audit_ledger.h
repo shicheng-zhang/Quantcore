@@ -32,7 +32,15 @@ public:
         // Initialize or resume log
         std::ifstream f(log_path_, std::ios::binary | std::ios::ate);
         if (f.good()) {
-            file_size_ = f.tellg();
+            file_size_ = static_cast<size_t>(f.tellg());
+        }
+        out_.open(log_path_, std::ios::binary | std::ios::app);
+    }
+
+    ~MerkleLedger() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (out_.is_open()) {
+            out_.close();
         }
     }
 
@@ -40,17 +48,14 @@ public:
         // Thread-safe append with mutex (ledger is shared across engine + micro threads)
         std::lock_guard<std::mutex> lock(mutex_);
         // Auto-rotate log if it exceeds 50MB to prevent disk bloat
-        std::ifstream check_size(log_path_, std::ios::binary | std::ios::ate);
-        if (check_size.good()) {
-            std::streamsize sz = check_size.tellg();
-            check_size.close();
-            if (sz > 52428800) { // 50 MB
-                std::ofstream trunc(log_path_, std::ios::binary | std::ios::trunc);
-                trunc.close();
-                current_hash_ = 0x123456789ABCDEFULL;
-                prev_hash_ = 0x123456789ABCDEFULL;
-                seq_counter_ = 0;
-            }
+        file_size_ += sizeof(LogEntry);
+        if (file_size_ > 52428800) { // 50 MB
+            if (out_.is_open()) out_.close();
+            out_.open(log_path_, std::ios::binary | std::ios::trunc);
+            current_hash_ = 0x123456789ABCDEFULL;
+            prev_hash_ = 0x123456789ABCDEFULL;
+            seq_counter_ = 0;
+            file_size_ = sizeof(LogEntry);
         }
         // Build hash chain — use FNV-1a over type string bytes, not std::hash (implementation-defined)
         uint64_t payload_hash = fnv1a_hash(type) ^
@@ -68,9 +73,9 @@ public:
         entry.curr_hash = current_hash_;
 
         // Write to file
-        std::ofstream out(log_path_, std::ios::binary | std::ios::app);
-        if (out) {
-            out.write(reinterpret_cast<const char*>(&entry), sizeof(LogEntry));
+        if (out_.is_open()) {
+            out_.write(reinterpret_cast<const char*>(&entry), sizeof(LogEntry));
+            out_.flush();
         }
 
         prev_hash_ = current_hash_;
@@ -123,6 +128,7 @@ private:
     uint64_t seq_counter_ = 0;
     size_t file_size_ = 0;
     uint64_t last_hash_ = 0;
+    std::ofstream out_;
     std::mutex mutex_;
 };
 

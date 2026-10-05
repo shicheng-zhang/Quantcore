@@ -30,7 +30,7 @@ public:
     GhostExchange() : mt_(std::random_device{}()) {}
 
     // The core physics engine: Almgren-Chriss Market Impact + Queue Toxicity
-    void simulate_execution(uint64_t shares, double base_price, double volatility) {
+    void simulate_execution(uint64_t shares, double base_price, double volatility, Side side = Side::BUY) {
         reality.is_active.store(true);
         reality.target_shares.store(shares);
         reality.filled_shares.store(0);
@@ -69,19 +69,24 @@ public:
 
             // Add stochastic noise (the market is moving against you while you wait in queue)
             slip_price += (dist_(mt_) - 0.5) * base_price * volatility * 0.5;
+            slip_price = std::max(0.0, slip_price);
 
-            double fill_price = base_price + slip_price;
+            double fill_price = (side == Side::BUY) ? (base_price + slip_price) : (base_price - slip_price);
 
             // Update Reality Telemetry
             cumulative_cost += (fill_price * filled_this_tick);
             uint64_t total_filled = reality.filled_shares.load() + filled_this_tick;
             reality.filled_shares.store(total_filled);
             reality.actual_avg_price.store(cumulative_cost / total_filled);
-            reality.total_slippage_usd.store((reality.actual_avg_price.load() - base_price) * total_filled);
+            reality.total_slippage_usd.store(std::abs(reality.actual_avg_price.load() - reality.theoretical_price.load()) * total_filled);
             reality.partial_fills.fetch_add(1);
 
             remaining -= filled_this_tick;
-            base_price += slip_price * 0.1; // The price permanently shifts against you (Permanent Impact)
+            if (side == Side::BUY) {
+                base_price += slip_price * 0.1; // Permanent impact raises price for buyer
+            } else {
+                base_price -= slip_price * 0.1; // Permanent impact lowers price for seller
+            }
             reality.current_market_price.store(base_price);
 
             // Simulate network/matching delay (microseconds to milliseconds)

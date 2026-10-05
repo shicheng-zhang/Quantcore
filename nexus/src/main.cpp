@@ -133,7 +133,7 @@ void engine_loop() {
 
                     // --- MODULE 1: STATARB PAIR EXECUTION ---
                     int8_t arb_sig = __atomic_load_n(&hive_bridge->statarb_signal, __ATOMIC_ACQUIRE);
-                    if (arb_sig != 0) {
+                    if (arb_sig != 0 && !ops.kill_switch.load(std::memory_order_relaxed)) {
                         double beta = atomic_load_double(&hive_bridge->statarb_hedge_ratio);
                         double z = atomic_load_double(&hive_bridge->statarb_spread_z);
                         // Use last_price as base if available, otherwise synthetic fallback
@@ -181,7 +181,7 @@ void engine_loop() {
                         double target_w = hive_bridge->target_weights[i];
                         double delta_w = target_w - current_weights[i];
 
-                        if (std::abs(delta_w) > 0.001) {
+                        if (std::abs(delta_w) > 0.001 && !ops.kill_switch.load(std::memory_order_relaxed)) {
                             double target_value = portfolio_value * target_w;
                             double current_value = portfolio_value * current_weights[i];
                             double delta_value = target_value - current_value;
@@ -299,6 +299,9 @@ void telemetry_loop() {
     while(running.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+        // Check if regulatory surveillance daemon triggered a halt flag
+        ops.check_surveillance();
+
         // FIX #5: Snapshot the circular buffer for percentile calculation
         std::vector<double> current_latencies;
         {
@@ -352,6 +355,9 @@ void telemetry_loop() {
     telemetry_json["lit_fills"] = ops.lit_venue_fills.load();
     telemetry_json["dark_fills"] = ops.dark_pool_fills.load();
     telemetry_json["dark_improvement"] = ops.dark_pool_improvement_bps.load();
+    telemetry_json["kill_switch"] = ops.kill_switch.load();
+    telemetry_json["halt_reason"] = ops.halt_reason;
+    telemetry_json["regulatory_halt"] = ops.regulatory_halt.load();
 
     // Readers must see either the preceding complete snapshot or this complete
     // snapshot, never a partially written JSON document.
@@ -424,7 +430,7 @@ void trigger_ghost_execution(uint64_t shares, double price, double vol) {
         if (ghost_sim_thread.joinable()) {
             ghost_sim_thread.join();
         }
-        ghost_sim_thread = std::thread(&GhostExchange::simulate_execution, &ghost_lob, shares, price, vol);
+        ghost_sim_thread = std::thread(&GhostExchange::simulate_execution, &ghost_lob, shares, price, vol, Side::BUY);
     }
 }
 

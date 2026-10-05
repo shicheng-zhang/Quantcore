@@ -1,5 +1,16 @@
 # QuantCore Releases
 
+## V1.2.1-Patch — Engine Hardening & Surveillance Integration
+
+**Status:** Stable — HFT engine concurrency hardening & live surveillance hook (04/10/26)
+
+### Highlights
+- **SPSCQueue Concurrency**: Added `std::mutex push_mutex_` to `nexus/include/spsc_queue.h` to make concurrent pushes from both live WebSocket ingest and synthetic microstructure order generators thread-safe without race conditions, while preserving 100% lock-free reads for the consumer loop.
+- **Regulatory Surveillance Wiring**: Connected `ops.check_surveillance()` inside `telemetry_loop()` in `nexus/src/main.cpp` (500ms cycle), gating StatArb pair trading and portfolio rebalance orders on `!ops.kill_switch.load()`, and reporting `kill_switch`, `halt_reason`, and `regulatory_halt` flags live in `data/nexus_live.json`.
+- **MerkleLedger I/O Streamline**: Replaced repeated file open/close syscalls on every event in `append_event()` with a persistent `std::ofstream out_` and in-memory file size accounting, eliminating disk thrashing.
+- **Bidirectional GhostExchange**: Extended `GhostExchange::simulate_execution` with directional `Side` support, ensuring execution reality properly applies negative slippage and permanent impact to liquidation (SELL) orders.
+- **Paper Broker Test Alignment**: Updated `tests/test_edge_cases.py` to test 200 shares under dynamic Almgren-Chriss slippage, restoring 100% pass rate (36/36 tests passing).
+
 ## V1.2-Stable — Day-Trading Power Release
 
 **Status:** Stable — day-trading-first, power-user overhaul (24/09/26)

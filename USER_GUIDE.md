@@ -61,7 +61,7 @@ Navigation is grouped by institutional function:
 - **Command Center** — Dashboard, Paper Desk, CIO War Room, Signals
 - **Alpha & Research** — Trends, Predictions, Backtest Lab, Volatility Desk, Alpha Decay, Alpha Lab, StatArb Crucible, Research Lab
 - **Execution & HFT** — Execution Algos, Nexus HFT, Day Trading Desk (RVOL/Gap/Delta + macro gating), RL Execution
-- **Infrastructure** — Hive-Mind, Level 4 Sim, Institutional Ops, Satellite Lab, Macro Desk, Time Machine
+- **Infrastructure** — Hive-Mind, Level 4 Sim, Institutional Ops (regulatory surveillance monitor & kill-switch drills), Satellite Lab, Macro Desk, Time Machine
 
 Toggle **PRO / LEARN** mode in the top-right. LEARN mode highlights concepts and opens a mini-wiki explaining each term (day-trader translation vs. Wall Street reality).
 

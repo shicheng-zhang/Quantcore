@@ -37,3 +37,15 @@ python3 python/scripts/seed_universe.py
 ```
 
 Then re-run `pytest -q`.
+
+## CMakeCache directory mismatch after repository move / rename
+
+If the repository folder is moved or renamed (e.g. from `Quantcore` to `5133-WALL`), CMake will error on stale paths in `CMakeCache.txt`:
+
+```bash
+rm -rf nexus/build/CMakeCache.txt nexus/build/CMakeFiles nexus/build/_deps/*-subbuild
+cmake -B nexus/build -S nexus
+make -C nexus/build -j$(nproc)
+```
+
+Similarly, update any virtual environment shebangs in `.venv/bin/*` to match the new directory path.

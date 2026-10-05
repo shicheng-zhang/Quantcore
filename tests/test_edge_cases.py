@@ -34,11 +34,12 @@ def test_paper_broker_slippage_calculation():
     broker = PaperBroker(db_path=":memory:")
     
     # Market order should have higher slippage
-    res_market = broker.submit_order("AAPL", "BUY", 100, "MARKET")
+    res_market = broker.submit_order("AAPL", "BUY", 200, "MARKET")
     assert res_market["status"] == "FILLED"
     assert res_market["slippage_bps"] > 5.0
     
     # VWAP should have lower slippage
-    res_vwap = broker.submit_order("MSFT", "BUY", 100, "VWAP")
+    res_vwap = broker.submit_order("MSFT", "BUY", 200, "VWAP")
     assert res_vwap["status"] == "FILLED"
     assert res_vwap["slippage_bps"] < 5.0
+    assert res_market["slippage_bps"] > res_vwap["slippage_bps"]

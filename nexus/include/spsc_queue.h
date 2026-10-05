@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstddef>
 #include <new>
+#include <mutex>
 
 namespace nexus {
 
@@ -15,7 +16,9 @@ class SPSCQueue {
 public:
     SPSCQueue() : head_(0), tail_(0) {}
 
+    // Multi-producer safe: serializes concurrent pushes while consumer remains 100% lock-free
     bool push(const T& item) {
+        std::lock_guard<std::mutex> lock(push_mutex_);
         const size_t current_tail = tail_.load(std::memory_order_relaxed);
         const size_t next_tail = (current_tail + 1) & (Capacity - 1);
         if (next_tail == head_.load(std::memory_order_acquire)) return false; // Full
@@ -24,6 +27,7 @@ public:
         return true;
     }
 
+    // Single consumer: strictly lock-free
     bool pop(T& item) {
         const size_t current_head = head_.load(std::memory_order_relaxed);
         if (current_head == tail_.load(std::memory_order_acquire)) return false; // Empty
@@ -33,6 +37,7 @@ public:
     }
 
 private:
+    std::mutex push_mutex_;
     // Pad atomics to ensure they sit on different cache lines
     alignas(CACHE_LINE_SIZE) std::atomic<size_t> head_;
     alignas(CACHE_LINE_SIZE) std::atomic<size_t> tail_;

@@ -2,6 +2,8 @@
 
 QuantCore is an open-source quantitative research and simulation platform. It is released under the MIT License. Contributions are welcome, and the project is maintained as a community-driven portfolio piece and educational tool. **No real capital is ever at risk.**
 
+## Warning: Unstable Build with Path Changes executing. Revert to V1.1-Stable for crucial work.
+
 ## Overview
 
 QuantCore is a modular quantitative research, simulation, paper-trading, and execution platform. It combines a C++20 computation and execution engine with a Python research layer and a FastAPI dashboard, all running locally. **V1.2 is a day-trading-first release** — macro depth with micro execution.
@@ -19,10 +21,10 @@ QuantCore is a modular quantitative research, simulation, paper-trading, and exe
 - Historical data ingestion with provider fallback (yfinance → Stooq) and a durable local cache; **tick store** (`data/ticks.duckdb`) for session-anchored intraday bars
 - Technical indicators and vectorized **microstructure** feature generation (C++): `OBI`, `queue_imbalance`, `cumulative_delta`, `delta_imbalance`, `kyle_lambda`, `effective_spread`, `VPIN`, `parkinson/garman-klass` vol, session `volume_profile` (POC/VAH/VAL), `rvol` (time-of-day curve)
 - Portfolio analytics: **Hierarchical Risk Parity** (inverse-variance cluster, Lou de Prado) + **Deflated Sharpe Ratio** (Lo 2002, `T=n_obs` not `252`)
-- Risk management: Risk Committee gauntlet (overfit, **strategy-aware** stress, **relative** friction) + session-aware `RiskEngine` (intraday loss, `max_trades/day`, `max_consecutive_losses`, `flat_deadline 15:55 ET`, hold-time)
-- Paper broker with DuckDB ledger, unified `η=0.15` slippage (MARKET×3.0, VWAP×0.43, TWAP×1.2) + `ADV` per asset
+- Risk management: Risk Committee gauntlet (overfit, **strategy-aware** stress, **relative** friction) + session-aware `RiskEngine` (intraday loss, `max_trades/day`, `max_consecutive_losses`, `flat_deadline 15:55 ET`, hold-time) + **live regulatory surveillance kill switch** (active polling every 500ms, auto-gating order routing)
+- Paper broker with DuckDB ledger, dynamic Almgren-Chriss slippage (`η=0.15`, MARKET×3.0, VWAP×0.43, TWAP×1.2) + `ADV` per asset
 - Replay / stress-testing engine (Time Machine) — recalibrated crashes (`-1.5%` not `-2.5%`, non-deterministic)
-- C++20 HFT engine (Nexus) with lock-free SPSC (2M), price-keyed LOB (quantized, walk-back), microstructure sim (unified η), audit hash chain (FNV-1a + mutex), Binance ingest, ghost exchange
+- C++20 HFT engine (Nexus) with multi-producer thread-safe SPSC (2M, zero-latency lock-free consumer reads), price-keyed LOB (quantized, walk-back), microstructure sim (unified η), audit hash chain (FNV-1a with buffered I/O stream), bidirectional Ghost Exchange (BUY/SELL execution reality), Binance live ingest
 - Dashboard 1.1 — **power-user UI**: command palette (`⌘K`), keyboard `G D/P/T/N/S`, `Alt+T/D/Y`, sidebar favorites/recent, density `◫▭▢`, `light/dark` themes, sortable `qc-table` (dbl-click copy), toasts, skeletons, `light` RPATH fallback
 - 20+ pages + REST API with Python fallback if `quantcore_cpp` not built (web stays up, degraded `200 {error}` not 500)
 
