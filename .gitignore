@@ -36,6 +36,7 @@ data/alpaca_creds.json
 # Build artifacts
 build/
 build-cpptests/
+build-nexus/
 nexus/build/
 __pycache__/
 *.pyc
