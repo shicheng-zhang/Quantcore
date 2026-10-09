@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Syntax check setup script
+        run: bash -n setup.sh
+
+      - name: Run test suite
+        # The C++ extension is optional: the Python layer falls back to pure
+        # Python when quantcore_cpp is absent, so CI never needs to build DuckDB.
+        run: python -m pytest -q
+
+  cpp-tests:
+    name: C++ unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake
+
+      # Only risk_engine/feature_engine are built here — they need nothing but
+      # spdlog (header-only) + OpenMP. This deliberately avoids the full
+      # quantcore_cpp build, which pulls DuckDB and pybind11 from source and
+      # is what broke CI in the past.
+      - name: Configure
+        run: cmake -S cpp/tests -B build-cpptests
+
+      - name: Build
+        run: cmake --build build-cpptests -j"$(nproc)"
+
+      - name: Test
+        run: ctest --test-dir build-cpptests --output-on-failure
+
+  nexus-lob-test:
+    name: Nexus limit order book
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake libssl-dev zlib1g-dev
+
+      # test_lob has no external dependencies (headers only), so this skips the
+      # IXWebSocket/DuckDB dependencies that nexus_core itself needs.
+      - name: Configure
+        run: cmake -S nexus -B build-nexus
+
+      - name: Build and run
+        run: |
+          cmake --build build-nexus --target test_lob -j"$(nproc)"
+          ./build-nexus/test_lob
+
+  # Opt-in only: the full C++ module build fetches DuckDB, pybind11, spdlog and
+  # nlohmann/json from source and takes a long time. Trigger manually from the
+  # Actions tab before cutting a release.
+  full-cpp-build:
+    name: Full C++ build (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake python3-dev libssl-dev zlib1g-dev python3-venv
+
+      - name: Build quantcore_cpp
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install pybind11
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+          test -f build/quantcore_cpp.cpython-*.so
