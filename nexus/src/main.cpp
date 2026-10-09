@@ -102,7 +102,9 @@ void engine_loop() {
         if (event_queue.pop(event)) {
             uint64_t process_time = get_nanos();
 
-            // 1. Update LOB (O(1))
+            // 1. Update the price-keyed limit order book (O(log n) per update;
+            //    see limit_order_book.h for why the previous O(1) hash was
+            //    silently dropping levels).
             lob.update(event);
             last_price.store(event.price, std::memory_order_relaxed);
 

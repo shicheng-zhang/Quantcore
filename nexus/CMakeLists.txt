@@ -22,3 +22,11 @@ FetchContent_MakeAvailable(ixwebsocket)
 add_executable(nexus_core src/main.cpp)
 target_include_directories(nexus_core PRIVATE include)
 target_link_libraries(nexus_core PRIVATE ixwebsocket nlohmann_json::nlohmann_json OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB pthread)
+
+# Dependency-free unit tests for the order book. Build with:
+#   cmake --build <builddir> --target test_lob
+enable_testing()
+add_executable(test_lob tests/test_lob.cpp)
+target_include_directories(test_lob PRIVATE include)
+target_compile_options(test_lob PRIVATE -Wall -Wextra)
+add_test(NAME lob COMMAND test_lob)
