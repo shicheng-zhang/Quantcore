@@ -29,13 +29,13 @@ data/paper_broker.duckdb
 data/analytics.db
 data/alpaca_creds.json
 
-# Backup files
+# Backup files (any phase suffix: phase2bak, phase3bak, phase4bak, ...)
 *.bak
-*.phase2bak
-*.phase5bak
+*.phase*bak
 
 # Build artifacts
 build/
+build-cpptests/
 nexus/build/
 __pycache__/
 *.pyc
@@ -43,3 +43,9 @@ __pycache__/
 data_cache/
 data/runtime/
 data/nexus_live.json.tmp
+
+# OS / editor cruft
+.DS_Store
+*.swp
+.idea/
+.vscode/

@@ -2,7 +2,11 @@
 
 QuantCore is an open-source quantitative research and simulation platform. It is released under the MIT License. Contributions are welcome, and the project is maintained as a community-driven portfolio piece and educational tool. **No real capital is ever at risk.**
 
-## Warning: Unstable Build with Path Changes executing. Revert to V1.1-Stable for crucial work.
+## Status
+
+**1.2** is the current release: day-trading-first, with a passing test suite (`pytest` for Python, `ctest` for the C++ engines) that runs in CI on every push.
+
+Advanced modules marked `EXP` are works in progress — see `ROADMAP.md`. If you need a frozen snapshot for critical work, commit `e3eb812` (V1.1-Stable) is the last pre-1.2 milestone.
 
 ## Overview
 
@@ -47,6 +51,14 @@ Then open http://127.0.0.1:8765. See `USER_GUIDE.md` for the full walkthrough.
 - **IPC** — layout-verified 597-byte `HiveMindState` (`pack(1)`, `static_assert 597`) + atomic double helpers for unaligned mmap.
 
 See `ARCHITECTURE.md` for details.
+
+## Testing
+
+```bash
+pytest                        # Python suite
+cmake -S cpp/tests -B build-cpptests && cmake --build build-cpptests
+ctest --test-dir build-cpptests --output-on-failure   # C++ risk + feature engine
+```
 
 ## Project status
 
