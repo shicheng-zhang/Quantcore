@@ -36,18 +36,18 @@ namespace quantcore {
     }
 
     void DataEngine::load_parquet_directory(const std::string& name, const std::string& dir) {
-    if (!qc_is_safe_identifier(name)) {
-        throw std::invalid_argument("Unsafe SQL view name rejected: " + name);
-    }
-    if (!qc_is_safe_path_fragment(dir)) {
-        throw std::invalid_argument("Unsafe parquet directory rejected: " + dir);
-    }
+        if (!qc_is_safe_identifier(name)) {
+            throw std::invalid_argument("Unsafe SQL view name rejected: " + name);
+        }
+        if (!qc_is_safe_path_fragment(dir)) {
+            throw std::invalid_argument("Unsafe parquet directory rejected: " + dir);
+        }
 
-    // name is restricted to [A-Za-z_][A-Za-z0-9_]{0,63}.
-    // dir rejects quotes, NUL bytes, and parent traversal.
-    conn_->Query("CREATE OR REPLACE VIEW " + name +
-                 " AS SELECT * FROM read_parquet('" + dir + "/*.parquet')");
-}
+        // name is restricted to [A-Za-z_][A-Za-z0-9_]{0,63}.
+        // dir rejects quotes, NUL bytes, and parent traversal.
+        conn_->Query("CREATE OR REPLACE VIEW " + name +
+                     " AS SELECT * FROM read_parquet('" + dir + "/*.parquet')");
+    }
 
     std::vector<FeatureRow> DataEngine::query_features(const std::string& sql) {
         auto result = conn_->Query(sql);

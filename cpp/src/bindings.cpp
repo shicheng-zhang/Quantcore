@@ -36,9 +36,33 @@ PYBIND11_MODULE(quantcore_cpp, m) {
     py::enum_<OrderType>(m, "OrderType").value("MARKET", OrderType::MARKET).value("LIMIT", OrderType::LIMIT);
     py::enum_<RiskDecision>(m, "RiskDecision").value("APPROVE", RiskDecision::APPROVE).value("REJECT", RiskDecision::REJECT).value("HALT_TRADING", RiskDecision::HALT_TRADING);
 
-    py::class_<Tick>(m, "Tick").def(py::init<>()).def_readwrite("symbol", &Tick::symbol).def_readwrite("price", &Tick::price);
-    py::class_<Order>(m, "Order").def(py::init<>()).def_readwrite("id", &Order::id).def_readwrite("symbol", &Order::symbol).def_readwrite("side", &Order::side).def_readwrite("quantity", &Order::quantity).def_readwrite("limit_price", &Order::limit_price);
-    py::class_<PortfolioSnapshot>(m, "PortfolioSnapshot").def(py::init<>()).def_readwrite("total_equity", &PortfolioSnapshot::total_equity).def_readwrite("daily_pnl", &PortfolioSnapshot::daily_pnl).def_readwrite("cash", &PortfolioSnapshot::cash).def_readwrite("drawdown_pct", &PortfolioSnapshot::drawdown_pct);
+    py::class_<Position>(m, "Position")
+        .def(py::init<>())
+        .def_readwrite("symbol", &Position::symbol)
+        .def_readwrite("quantity", &Position::quantity)
+        .def_readwrite("average_cost", &Position::average_cost)
+        .def_readwrite("unrealized_pnl", &Position::unrealized_pnl)
+        .def_readwrite("entry_time_ns", &Position::entry_time_ns);
+
+    py::class_<Tick>(m, "Tick").def(py::init<>()).def_readwrite("symbol", &Tick::symbol).def_readwrite("timestamp_ns", &Tick::timestamp_ns).def_readwrite("price", &Tick::price).def_readwrite("volume", &Tick::volume);
+    py::class_<Order>(m, "Order")
+        .def(py::init<>())
+        .def_readwrite("id", &Order::id)
+        .def_readwrite("symbol", &Order::symbol)
+        .def_readwrite("side", &Order::side)
+        .def_readwrite("type", &Order::type)
+        .def_readwrite("quantity", &Order::quantity)
+        .def_readwrite("limit_price", &Order::limit_price);
+    py::class_<PortfolioSnapshot>(m, "PortfolioSnapshot")
+        .def(py::init<>())
+        .def_readwrite("timestamp_ns", &PortfolioSnapshot::timestamp_ns)
+        .def_readwrite("total_equity", &PortfolioSnapshot::total_equity)
+        .def_readwrite("daily_pnl", &PortfolioSnapshot::daily_pnl)
+        .def_readwrite("cash", &PortfolioSnapshot::cash)
+        .def_readwrite("drawdown_pct", &PortfolioSnapshot::drawdown_pct)
+        // Positions drive every session-aware gate: flat deadline, concentration,
+        // hold time. Without this the risk engine is not usable from Python.
+        .def_readwrite("positions", &PortfolioSnapshot::positions);
 
     py::class_<EventBus>(m, "EventBus").def(py::init<>()).def("publish_tick", &EventBus::publish<Tick>);
 
@@ -62,9 +86,9 @@ PYBIND11_MODULE(quantcore_cpp, m) {
 
     py::class_<FeatureEngine>(m, "FeatureEngine")
         .def(py::init<>())
-        .def_static("rolling_mean", &FeatureEngine::rolling_mean_avx512)
-        .def_static("rolling_std", &FeatureEngine::rolling_std_avx512)
-        .def_static("rolling_zscore", &FeatureEngine::rolling_zscore_avx512)
+        .def_static("rolling_mean", &FeatureEngine::rolling_mean)
+        .def_static("rolling_std", &FeatureEngine::rolling_std)
+        .def_static("rolling_zscore", &FeatureEngine::rolling_zscore)
         .def_static("order_book_imbalance", &FeatureEngine::order_book_imbalance)
         .def_static("queue_imbalance", &FeatureEngine::queue_imbalance)
         .def_static("cumulative_delta", &FeatureEngine::cumulative_delta)
@@ -85,7 +109,12 @@ PYBIND11_MODULE(quantcore_cpp, m) {
         .def_readwrite("max_intraday_loss_pct", &RiskConfig::max_intraday_loss_pct)
         .def_readwrite("max_trades_per_day", &RiskConfig::max_trades_per_day)
         .def_readwrite("max_consecutive_losses", &RiskConfig::max_consecutive_losses)
-        .def_readwrite("max_position_hold_minutes", &RiskConfig::max_position_hold_minutes);
+        .def_readwrite("max_position_hold_minutes", &RiskConfig::max_position_hold_minutes)
+        // Session/day-trading fields (ns since midnight). Without these the
+        // flat-deadline and session gates are permanently disabled from Python.
+        .def_readwrite("session_start_ns", &RiskConfig::session_start_ns)
+        .def_readwrite("session_end_ns", &RiskConfig::session_end_ns)
+        .def_readwrite("flat_deadline_ns", &RiskConfig::flat_deadline_ns);
     py::class_<RiskResult>(m, "RiskResult").def_readonly("decision", &RiskResult::decision).def_readonly("reason", &RiskResult::reason);
     py::class_<RiskEngine>(m, "RiskEngine")
         .def(py::init<const RiskConfig&, EventBus&>())

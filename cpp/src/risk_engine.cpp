@@ -27,7 +27,7 @@ namespace quantcore {
         return day_ns >= config_.flat_deadline_ns;
     }
 
-    void RiskEngine::record_trade_result(bool was_win, const std::string& symbol, int64_t timestamp_ns) {
+    void RiskEngine::record_trade_result(bool was_win, [[maybe_unused]] const std::string& symbol, int64_t timestamp_ns) {
         std::lock_guard<std::mutex> lock(mutex_);
         // Reset daily counters on new day
         int64_t day = timestamp_ns / (86400LL * 1000000000LL);
@@ -50,16 +50,31 @@ namespace quantcore {
         // Session checks first
         if (portfolio.timestamp_ns > 0) {
             if (is_flat_deadline(portfolio.timestamp_ns)) {
-                // Only allow closing orders after flat deadline
-                bool has_position = false;
-                for (auto& p : portfolio.positions) if (p.symbol == order.symbol && p.quantity != 0) { has_position = true; break; }
-                bool is_closing = has_position && ((order.side == Side::SELL && get_position_notional(portfolio, order.symbol) > 0) || (order.side == Side::BUY));
-                if (!has_position) return {RiskDecision::REJECT, "Flat deadline: no new positions after 15:55 ET"};
+                // After the flat deadline only strictly risk-reducing orders
+                // are permitted: closing a long (SELL) or covering a short
+                // (BUY), up to the position size. Adding to a position, or
+                // opening a new one, must be rejected — otherwise the intent
+                // of "flat by 15:55 ET" is not enforced at all.
+                double held_qty = 0.0;
+                for (auto& p : portfolio.positions) {
+                    if (p.symbol == order.symbol && p.quantity != 0.0) { held_qty = p.quantity; break; }
+                }
+                bool is_reducing = false;
+                if (held_qty > 0.0 && order.side == Side::SELL) {
+                    is_reducing = order.quantity <= held_qty;
+                } else if (held_qty < 0.0 && order.side == Side::BUY) {
+                    is_reducing = order.quantity <= -held_qty;
+                }
+                if (!is_reducing) {
+                    return {RiskDecision::REJECT,
+                            held_qty == 0.0
+                                ? "Flat deadline: no new positions after 15:55 ET"
+                                : "Flat deadline: only reducing positions allowed after 15:55 ET"};
+                }
             }
-            if (is_outside_session(portfolio.timestamp_ns)) {
-                // Allow only if we have no existing position to close? Block new opens
-                // For now, warn but allow closes — full block is too strict for premarket
-            }
+            // is_outside_session() is intentionally not enforced: pre-market
+            // opens are allowed by design. The flat deadline above is the
+            // session gate; see RiskConfig::session_start_ns/end_ns.
         }
         // Overtrading guard
         if (trades_today_ >= config_.max_trades_per_day) {
@@ -106,21 +121,18 @@ namespace quantcore {
         if (!order.limit_price.has_value() || *order.limit_price <= 0) {
             return {RiskDecision::REJECT, "Missing market price for risk check"};
         }
-        // Check post-trade concentration, not just single order notional
-        double existing_pos = get_position_notional(portfolio, order.symbol);
-        double order_notional = std::abs(order.quantity * *order.limit_price);
-        double post_trade_notional;
-        if (order.side == Side::BUY) {
-            post_trade_notional = existing_pos + order_notional;
-        } else {
-            // Selling reduces exposure; check if would flip to short — limit gross
-            post_trade_notional = std::max(0.0, existing_pos - order_notional);
-            // If shorting beyond existing, count new short notional
-            if (order_notional > existing_pos) {
-                post_trade_notional = order_notional - existing_pos;
-            }
+        // Post-trade concentration. Work in signed share counts so covering a
+        // short is recognised as *reducing* exposure: the previous version took
+        // abs(quantity * avg_cost) for the existing side, so buying back a short
+        // position was charged as if it added a second long position.
+        double held_qty = 0.0;
+        for (auto& p : portfolio.positions) {
+            if (p.symbol == order.symbol) { held_qty = p.quantity; break; }
         }
-        // For new positions (existing_pos == 0), post_trade == order_notional
+        const double order_qty = (order.side == Side::BUY ? 1.0 : -1.0) * order.quantity;
+        const double post_trade_qty = held_qty + order_qty;
+        const double post_trade_notional = std::abs(post_trade_qty * *order.limit_price);
+
         double concentration = portfolio.total_equity > 0 ? post_trade_notional / portfolio.total_equity : 0.0;
         if (portfolio.total_equity > 0 && concentration > config_.max_position_pct) {
             return {RiskDecision::REJECT, "Post-trade position " + std::to_string(concentration*100) + "% exceeds limit " + std::to_string(config_.max_position_pct*100) + "%"};
@@ -142,9 +154,10 @@ namespace quantcore {
         // Reset daily trade counters if new day detected in snapshot
         if (snapshot.timestamp_ns > 0) {
             int64_t day = snapshot.timestamp_ns / (86400LL * 1000000000LL);
-            if (last_trade_day_ns_ != 0 && day != last_trade_day_ns_) {
+            if (last_trade_day_ns_ >= 0 && day != last_trade_day_ns_) {
                 trades_today_ = 0;
                 consecutive_losses_ = 0;
+                last_trade_day_ns_ = day;
             }
         }
     }

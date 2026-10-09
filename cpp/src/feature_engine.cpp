@@ -5,7 +5,7 @@
 #include <algorithm>
 
 namespace quantcore {
-    std::vector<double> FeatureEngine::rolling_mean_avx512(const std::vector<double>& data, int window) {
+    std::vector<double> FeatureEngine::rolling_mean(const std::vector<double>& data, int window) {
         size_t len = data.size();
         std::vector<double> result(len, std::numeric_limits<double>::quiet_NaN());
         if (window <= 0 || len == 0) return result;
@@ -18,11 +18,11 @@ namespace quantcore {
         return result;
     }
     
-    std::vector<double> FeatureEngine::rolling_std_avx512(const std::vector<double>& data, int window) {
+    std::vector<double> FeatureEngine::rolling_std(const std::vector<double>& data, int window) {
         size_t len = data.size();
         std::vector<double> result(len, std::numeric_limits<double>::quiet_NaN());
         if (window <= 1 || len == 0) return result;
-        auto means = rolling_mean_avx512(data, window);
+        auto means = rolling_mean(data, window);
         for (size_t i = window - 1; i < len; i++) {
             double sum_sq_diff = 0.0;
             double mean = means[i];
@@ -36,9 +36,9 @@ namespace quantcore {
         return result;
     }
     
-    std::vector<double> FeatureEngine::rolling_zscore_avx512(const std::vector<double>& data, int window) {
-        auto means = rolling_mean_avx512(data, window);
-        auto stds = rolling_std_avx512(data, window);
+    std::vector<double> FeatureEngine::rolling_zscore(const std::vector<double>& data, int window) {
+        auto means = rolling_mean(data, window);
+        auto stds = rolling_std(data, window);
         size_t len = data.size();
         std::vector<double> result(len, std::numeric_limits<double>::quiet_NaN());
         for (size_t i = window - 1; i < len; i++) {

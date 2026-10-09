@@ -51,6 +51,9 @@ namespace quantcore {
         // Session tracking
         int trades_today_ = 0;
         int consecutive_losses_ = 0;
-        int64_t last_trade_day_ns_ = 0;
+        // -1 sentinel: 0 is a valid day index (epoch day), so it cannot double
+        // as "unset" — using 0 here made the day-rollover reset in
+        // update_portfolio() silently unreachable.
+        int64_t last_trade_day_ns_ = -1;
     };
 }

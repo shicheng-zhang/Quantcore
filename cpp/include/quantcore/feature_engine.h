@@ -8,15 +8,10 @@ namespace quantcore {
     public:
         FeatureEngine() = default;
         
-        // NOTE: "_avx512" is a legacy name — implementation uses OMP SIMD, not AVX-512 intrinsics.
-        // Kept for API backward compatibility. Returns NaN for insufficient history (window-1 prefix).
-        static std::vector<double> rolling_mean_avx512(const std::vector<double>& data, int window);
-        static std::vector<double> rolling_std_avx512(const std::vector<double>& data, int window);
-        static std::vector<double> rolling_zscore_avx512(const std::vector<double>& data, int window);
-        // Preferred aliases without misleading suffix
-        static inline std::vector<double> rolling_mean(const std::vector<double>& d, int w) { return rolling_mean_avx512(d, w); }
-        static inline std::vector<double> rolling_std(const std::vector<double>& d, int w) { return rolling_std_avx512(d, w); }
-        static inline std::vector<double> rolling_zscore(const std::vector<double>& d, int w) { return rolling_zscore_avx512(d, w); }
+        // Rolling statistics. NaN for insufficient history (window-1 prefix).
+        static std::vector<double> rolling_mean(const std::vector<double>& data, int window);
+        static std::vector<double> rolling_std(const std::vector<double>& data, int window);
+        static std::vector<double> rolling_zscore(const std::vector<double>& data, int window);
         
         // Institutional Microstructure Features
         static std::vector<double> order_book_imbalance(const std::vector<double>& bid_vols, const std::vector<double>& ask_vols);
