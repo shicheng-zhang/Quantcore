@@ -6,7 +6,7 @@ QuantCore is an open-source quantitative research and simulation platform. It is
 
 **1.2** is the current release: day-trading-first, with a passing test suite (`pytest` for Python, `ctest` for the C++ engines) that runs in CI on every push.
 
-Advanced modules marked `EXP` are works in progress — see `ROADMAP.md`. If you need a frozen snapshot for critical work, commit `e3eb812` (V1.1-Stable) is the last pre-1.2 milestone.
+Advanced modules marked `EXP` are works in progress — see `ROADMAP.md`. If you need a frozen snapshot for critical work, the `V1.1-Stable` tag marks the last pre-1.2 milestone.
 
 ## Overview
 
