@@ -8,7 +8,12 @@ import yfinance as yf
 from scipy import stats
 import itertools
 import warnings
-warnings.filterwarnings('ignore')
+
+# Only silence the two known-noisy third-party categories. A blanket
+# filterwarnings('ignore') also hides numpy RuntimeWarnings (divide-by-zero,
+# invalid value) that point at genuine data problems.
+warnings.filterwarnings('ignore', category=FutureWarning, module='yfinance')
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='yfinance')
 
 # Force line-buffering even if -u flag is missed
 sys.stdout.reconfigure(line_buffering=True)

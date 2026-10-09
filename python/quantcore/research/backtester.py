@@ -1,10 +1,7 @@
-import warnings
-warnings.filterwarnings('ignore', category=RuntimeWarning)
 """Institutional Vectorized Backtester."""
 import polars as pl
 import numpy as np
 import logging
-
 import math
 
 def _sanitize(obj):

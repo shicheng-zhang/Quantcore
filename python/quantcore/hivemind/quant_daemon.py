@@ -14,18 +14,28 @@ import warnings
 import pickle
 import io
 
+import builtins
+
 class _SafeUnpickler(pickle.Unpickler):
     """Restrict unpickling to tuples of floats only (the only format we write)."""
+    _ALLOWED = frozenset({'tuple', 'float', 'int', 'list'})
+
     def find_class(self, module, name):
-        if module == 'builtins' and name in ('tuple', 'float', 'int', 'list'):
-            return getattr(__builtins__, name) if isinstance(__builtins__, dict) else getattr(__builtins__, name)
+        if module == 'builtins' and name in self._ALLOWED:
+            # __builtins__ is a dict in imported modules and a module in __main__,
+            # so always resolve through the builtins module instead.
+            return getattr(builtins, name)
         raise pickle.UnpicklingError(f"Restricted: {module}.{name}")
 
 def _safe_load_pkl(path):
     with open(path, "rb") as f:
         return _SafeUnpickler(f).load()
 
-warnings.filterwarnings('ignore')
+# Silence only the known-noisy categories from third-party libraries.
+# RuntimeWarning (numpy divide-by-zero / invalid value) is deliberately left
+# visible: in the pair-scan math it points at real data problems.
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 sys.stdout.reconfigure(line_buffering=True)
 
 print("[DAEMON] Starting Unified Hive-Mind & StatArb Daemon...")
