@@ -270,3 +270,62 @@ QC.fmt = {
   bps: (n) => Number(n || 0).toFixed(1) + 'bps',
   hash: (h) => h ? String(h).slice(0, 8) + '…' + String(h).slice(-6) : '—',
 };
+
+// ——— Telemetry health ———
+// Attaches a LIVE / STALE / OFFLINE badge and a warning strip to a page, and
+// dims the instrumented values when they are not live. The readings stay
+// visible — a stale number is information about the engine, not noise.
+//
+//   QC.telemetryMount({
+//     selector: '.qc-tel-scope',   // element carrying the state attribute
+//     badge:    '#tel-badge',      // element receiving the badge text
+//     warn:     '#tel-warn',       // element receiving the warning strip
+//     fetch:    '/api/nexus/telemetry',
+//     onData:   (d) => {...},     // page-specific rendering
+//     interval: 2000,
+//   });
+QC.telemetryMount = function (opts) {
+  const scope = typeof opts.selector === 'string' ? document.querySelector(opts.selector) : opts.selector;
+  const badge = opts.badge && document.querySelector(opts.badge);
+  const warn = opts.warn && document.querySelector(opts.warn);
+  if (!scope) return () => {};
+
+  const setState = (state, label) => {
+    scope.dataset.state = state;
+    if (badge) {
+      badge.dataset.state = state;
+      badge.innerHTML = `<span class="qc-dot"></span>${label || state}`;
+    }
+    if (warn) warn.innerHTML = '';
+  };
+
+  let stopped = false;
+  const tick = async () => {
+    if (stopped) return;
+    const d = await QC.api(opts.fetch);
+    if (stopped) return;
+
+    if (d.__error) { setState('UNKNOWN', '?'); return; }
+
+    const state = d.telemetry_state || 'UNKNOWN';
+    const label = state === 'LIVE' ? 'LIVE'
+      : state === 'STALE' ? `STALE ${d.telemetry_age_human || ''}`
+      : `OFFLINE ${d.telemetry_age_human || ''}`;
+    setState(state, label);
+
+    if (warn) {
+      const list = Array.isArray(d.warnings) ? d.warnings : [];
+      if (list.length) {
+        warn.innerHTML = `<span class="qc-tel-warn-icon">!</span><span>${QC.escapeHtml(list.join(' · '))}</span>`;
+      } else {
+        warn.innerHTML = '';
+      }
+    }
+
+    if (opts.onData) opts.onData(d);
+  };
+
+  tick();
+  const timer = setInterval(tick, opts.interval || 2000);
+  return () => { stopped = true; clearInterval(timer); };
+};

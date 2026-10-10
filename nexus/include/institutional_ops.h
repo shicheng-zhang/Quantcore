@@ -24,12 +24,37 @@ public:
     std::atomic<bool> regulatory_halt{false};
     std::atomic<uint64_t> spoofing_flags{0};
 
+    // Route this fraction of each order to dark pools. Configurable because a
+    // hardcoded 0.30 makes the SOR split a structural constant: the telemetry
+    // then reports the same lit/dark percentage forever, which is a label
+    // pretending to be a measurement. Set QUANTCORE_DARK_PCT (0..1) to change
+    // it; the supervisor passes the value from config/system.yaml.
+    explicit InstitutionalOps(double dark_pct = 0.30) {
+        const char* env = std::getenv("QUANTCORE_DARK_PCT");
+        if (env && *env) {
+            try {
+                const double parsed = std::stod(env);
+                if (parsed >= 0.0 && parsed <= 1.0) {
+                    dark_pct = parsed;
+                } else {
+                    std::fprintf(stderr, "[SOR] QUANTCORE_DARK_PCT=%s is outside [0,1]; using %.2f\n", env, dark_pct);
+                }
+            } catch (const std::exception&) {
+                std::fprintf(stderr, "[SOR] QUANTCORE_DARK_PCT=%s is not a number; using %.2f\n", env, dark_pct);
+            }
+        }
+        dark_pct_.store(dark_pct, std::memory_order_relaxed);
+    }
+
+    double dark_pct() const { return dark_pct_.load(std::memory_order_relaxed); }
+
     // SOR Logic: Fragments order between Lit and Dark
     void route_order(uint64_t qty, double price) {
         if (kill_switch.load()) return;
 
-        // 70% Lit, 30% Dark — configurable split
-        uint64_t dark_qty = static_cast<uint64_t>(qty * 0.30);
+        // Split is the configured ratio, not a compile-time constant.
+        const double pct = dark_pct();
+        uint64_t dark_qty = static_cast<uint64_t>(qty * pct);
         uint64_t lit_qty = qty - dark_qty;
 
         lit_venue_fills.fetch_add(lit_qty);
@@ -73,6 +98,9 @@ public:
         halt_reason = "NOMINAL";
         spoofing_flags.fetch_add(1); // Log that we reset
     }
+
+private:
+    std::atomic<double> dark_pct_{0.30};
 };
 
 } // namespace nexus

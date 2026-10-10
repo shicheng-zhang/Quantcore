@@ -357,6 +357,10 @@ void telemetry_loop() {
     telemetry_json["lit_fills"] = ops.lit_venue_fills.load();
     telemetry_json["dark_fills"] = ops.dark_pool_fills.load();
     telemetry_json["dark_improvement"] = ops.dark_pool_improvement_bps.load();
+    // Publish the configured split so the UI can show the setting rather than
+    // deriving an implied ratio that would be constant by construction.
+    telemetry_json["sor_dark_pct"] = ops.dark_pct();
+    telemetry_json["dark_improvement_max_bps"] = 2.0;  // engine's documented range
     telemetry_json["kill_switch"] = ops.kill_switch.load();
     telemetry_json["halt_reason"] = ops.halt_reason;
     telemetry_json["regulatory_halt"] = ops.regulatory_halt.load();

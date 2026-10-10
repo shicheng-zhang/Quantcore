@@ -4,6 +4,7 @@ build/
 # Runtime binary artifacts (Never track these)
 data/*.bin
 data/*.duckdb
+data/*.wal
 data/*.parquet
 data/*.log
 

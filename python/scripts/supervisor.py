@@ -46,6 +46,25 @@ def save(state):
     temporary.replace(STATE)
 
 
+def service_env():
+    """Environment for child processes.
+
+    Passes the SOR routing split from config/system.yaml into the C++ engine so
+    the dark pool share is a setting an operator can change. Falls back to the
+    engine default if config is missing or malformed — never blocks startup.
+    """
+    env = dict(os.environ)
+    try:
+        # The quantcore package lives under python/, not at the repo root.
+        sys.path.insert(0, str(ROOT / "python"))
+        from quantcore.config import load_config
+
+        env["QUANTCORE_DARK_PCT"] = str(load_config().execution.dark_pool_pct)
+    except Exception as exc:  # noqa: BLE001 - supervisor must stay usable
+        print(f"supervisor: config not applied ({exc}); engine defaults in use")
+    return env
+
+
 def start(names):
     state = read_state()
     for name in names:
@@ -56,7 +75,10 @@ def start(names):
             continue
         log = RUNTIME / f"{name}.log"
         with open(log, "a", encoding="utf-8") as output:
-            process = subprocess.Popen(COMMANDS[name], cwd=ROOT, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+            process = subprocess.Popen(
+                COMMANDS[name], cwd=ROOT, stdout=output, stderr=subprocess.STDOUT,
+                start_new_session=True, env=service_env(),
+            )
         state[name] = {"pid": process.pid, "started_at": time.time(), "command": COMMANDS[name]}
         print(f"{name}: started ({process.pid})")
     save(state)
@@ -78,11 +100,21 @@ def status():
     print(json.dumps({name: {**service, "running": alive(service["pid"])} for name, service in state.items()}, indent=2))
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("action", choices=("start", "stop", "status"))
-parser.add_argument("services", nargs="*", choices=tuple(COMMANDS))
-args = parser.parse_args()
-services = args.services or list(COMMANDS)
-if args.action == "start": start(services)
-elif args.action == "stop": stop(services)
-else: status()
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("action", choices=("start", "stop", "status"))
+    parser.add_argument("services", nargs="*", choices=tuple(COMMANDS))
+    args = parser.parse_args(argv)
+    services = args.services or list(COMMANDS)
+    if args.action == "start":
+        start(services)
+    elif args.action == "stop":
+        stop(services)
+    else:
+        status()
+
+
+# Guarded so the module can be imported (and service_env tested) without
+# argparse consuming the pytest command line.
+if __name__ == "__main__":
+    main()

@@ -21,11 +21,23 @@ class RiskConfig(BaseModel):
     max_drawdown_pct: float = Field(default=0.10, gt=0, le=1)
 
 
+class ExecutionConfig(BaseModel):
+    """Routing split for the Nexus Smart Order Router.
+
+    The dark-pool fraction is a real setting rather than a hardcoded 0.30 so the
+    lit/dark telemetry is a measurement instead of a constant that reads the
+    same forever.
+    """
+
+    dark_pool_pct: float = Field(default=0.30, ge=0.0, le=1.0)
+
+
 class QuantCoreConfig(BaseModel):
     config_version: int = 1
     system: SystemConfig = Field(default_factory=SystemConfig)
     data: DataConfig = Field(default_factory=DataConfig)
     risk: RiskConfig = Field(default_factory=RiskConfig)
+    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
 
 
 def load_config(path: str = "config/system.yaml") -> QuantCoreConfig:
@@ -37,6 +49,15 @@ def load_config(path: str = "config/system.yaml") -> QuantCoreConfig:
         config.system.runtime_dir = os.environ["QUANTCORE_RUNTIME_DIR"]
     if os.getenv("QUANTCORE_PREFER_LIVE_DATA"):
         config.data.prefer_live_data = os.environ["QUANTCORE_PREFER_LIVE_DATA"].lower() in {"1", "true", "yes"}
+    # Environment wins over the YAML so an operator can re-route without
+    # editing the checked-in file.
+    if os.getenv("QUANTCORE_DARK_PCT"):
+        try:
+            config.execution.dark_pool_pct = float(os.environ["QUANTCORE_DARK_PCT"])
+        except ValueError as e:
+            raise ValueError(
+                f"QUANTCORE_DARK_PCT={os.environ['QUANTCORE_DARK_PCT']!r} is not a number"
+            ) from e
     return config
 
 

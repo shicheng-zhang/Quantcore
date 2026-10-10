@@ -2,34 +2,38 @@
 {% block title %}Institutional Ops - QuantCore{% endblock %}
 
 {% block content %}
-<div class="flex justify-between items-center mb-6">
+<div class="flex justify-between items-start mb-4">
     <div>
         <h1 class="text-3xl font-bold text-red-500">Institutional Operations & Surveillance</h1>
         <p class="text-gray-400">Phase 1 (Kill Switch), Phase 4 (SOR/Dark Pools), Phase 5 (Regulatory Compliance).</p>
     </div>
-    <div class="flex gap-4">
-        <button onclick="startSurveillance()" id="surv-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold uppercase text-sm">Start Surveillance</button>
-        <button onclick="resetSystem()" id="reset-btn" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded font-bold uppercase text-sm">Reset System</button>
-        <button onclick="triggerKill()" id="kill-btn" class="bg-red-800 hover:bg-red-900 border-2 border-red-500 px-6 py-3 rounded font-bold uppercase tracking-wider animate-pulse">
-            ☢️ KILL SWITCH
-        </button>
+    <div class="flex flex-col items-end gap-2">
+        <span id="tel-badge" class="qc-tel" data-state="UNKNOWN">connecting…</span>
+        <div class="flex gap-2">
+            <button onclick="startSurveillance()" id="surv-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold uppercase text-sm">Start Surveillance</button>
+            <button onclick="resetSystem()" id="reset-btn" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded font-bold uppercase text-sm">Reset System</button>
+            <button onclick="triggerKill()" id="kill-btn" class="bg-red-800 hover:bg-red-900 border-2 border-red-500 px-6 py-3 rounded font-bold uppercase tracking-wider animate-pulse">
+                ☢️ KILL SWITCH
+            </button>
+        </div>
     </div>
 </div>
+<div id="tel-warn" class="qc-tel-warn mb-4 hidden"></div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+<div class="qc-tel-scope grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" data-state="UNKNOWN">
     <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-green-500">
         <h3 class="text-xs font-medium text-gray-400 uppercase">System Status</h3>
-        <p class="text-2xl font-bold" id="sys-status">NOMINAL</p>
+        <p class="text-2xl font-bold qc-tel-val" id="sys-status">NOMINAL</p>
         <p class="text-xs text-gray-500 mt-1" id="halt-reason">All systems operational.</p>
     </div>
     <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-blue-500">
         <h3 class="text-xs font-medium text-gray-400 uppercase">Lit Venue Fills</h3>
-        <p class="text-2xl font-bold text-blue-400" id="lit-fills">0</p>
+        <p class="text-2xl font-bold text-blue-400 qc-tel-val" id="lit-fills">0</p>
     </div>
     <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-purple-500">
         <h3 class="text-xs font-medium text-gray-400 uppercase">Dark Pool Fills</h3>
-        <p class="text-2xl font-bold text-purple-400" id="dark-fills">0</p>
-        <p class="text-xs text-gray-500 mt-1">Price Improvement: <span id="dark-imp" class="text-green-400">0.0 bps</span></p>
+        <p class="text-2xl font-bold text-purple-400 qc-tel-val" id="dark-fills">0</p>
+        <p class="text-xs text-gray-500 mt-1">Price Improvement: <span id="dark-imp" class="text-green-400 qc-tel-val">0.0 bps</span></p>
     </div>
 </div>
 
@@ -78,9 +82,9 @@ async function startSurveillance() {
     document.getElementById('surv-btn').className = "bg-green-700 px-4 py-2 rounded font-bold uppercase text-sm";
 }
 
-async function loadOps() {
+async function loadOps(data) {
     try {
-        const data = await fetch('/api/nexus/telemetry').then(r => r.json());
+        if (!data) data = await fetch('/api/nexus/telemetry').then(r => r.json());
 
         const statusEl = document.getElementById('sys-status');
         const reasonEl = document.getElementById('halt-reason');
@@ -106,27 +110,43 @@ async function loadOps() {
         // SOR Pie Chart
         const lit = data.lit_fills || 0;
         const dark = data.dark_fills || 0;
-
-        // Fallback to 70/30 split if no real data yet so the chart isn't blank
-        const plotLit = lit > 0 ? lit : 70;
-        const plotDark = dark > 0 ? dark : 30;
+        // Show the configured split only when there is nothing measured, and
+        // say so in the label. The old fallback drew 70/30 whenever the engine
+        // was down, which meant the chart looked measured either way and could
+        // not distinguish "running" from "off".
+        const live = data.telemetry_state === 'LIVE';
+        const useMeasured = live && lit + dark > 0;
+        const pctDark = (data.sor_dark_pct != null ? data.sor_dark_pct : 0.30);
+        const plotLit = useMeasured ? lit : (1 - pctDark) * 100;
+        const plotDark = useMeasured ? dark : pctDark * 100;
 
         if (plotLit + plotDark > 0) {
+            const suffix = useMeasured ? '' : '<br><span style="font-size:11px;color:#f59e0b">configured, not measured — engine ' +
+                (data.engine_running ? 'starting' : 'offline') + '</span>';
+            const litLabel = 'Lit Exchanges' + suffix;
+            const darkLabel = 'Dark Pools' + suffix;
             Plotly.newPlot('sor-chart', [{
                 values: [plotLit, plotDark],
-                labels: ['Lit Exchanges', 'Dark Pools'],
+                labels: [litLabel, darkLabel],
                 type: 'pie',
                 marker: {colors: ['#3b82f6', '#8b5cf6']},
                 textinfo: 'label+percent'
             }], {
-                paper_bgcolor: '#1f2937', plot_bgcolor: '#1f2937', font: {color: '#e5e7eb'},
+                paper_bgcolor: '#1f2733', plot_bgcolor: '#1f2733', font: {color: '#e5e7eb'},
                 margin: {t: 20, b: 20, l: 20, r: 20}, showlegend: false
             }, {responsive: true});
         }
     } catch(e) {}
 }
 
-setInterval(loadOps, 1000);
-loadOps();
+// Health badge + warning strip own the polling; loadOps only renders values.
+QC.telemetryMount({
+  selector: '.qc-tel-scope',
+  badge: '#tel-badge',
+  warn: '#tel-warn',
+  fetch: '/api/nexus/telemetry',
+  interval: 2000,
+  onData: (d) => { try { loadOps(d); } catch {} },
+});
 </script>
 {% endblock %}

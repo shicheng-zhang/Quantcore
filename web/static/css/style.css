@@ -246,3 +246,36 @@ body[data-mode="learn"] [data-term]:hover { color: #bfdbfe; }
 #cmdk-input.is-command { font-family: var(--qc-font-mono); color: var(--qc-success); }
 .qc-cmd-hint { font-family: var(--qc-font-mono); font-size: 10px; color: var(--qc-text-faint); }
 #cmdk-list .qc-cmd-item .qc-cmd-usage { font-family: var(--qc-font-mono); font-size: 10px; color: var(--qc-accent); }
+
+/* ——— Telemetry health ———
+   Badges that tell the operator whether readings are live, stale, or absent.
+   Values that are not live are dimmed rather than removed: the number stays
+   visible but never looks authoritative. */
+
+.qc-tel { display: inline-flex; align-items: center; gap: 5px; font-family: var(--qc-font-mono);
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 3px; border: 1px solid var(--qc-border); white-space: nowrap; }
+.qc-tel .qc-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+.qc-tel[data-state="LIVE"]    { color: var(--qc-success); border-color: color-mix(in srgb, var(--qc-success) 40%, transparent); }
+.qc-tel[data-state="STALE"]   { color: var(--qc-warning); border-color: color-mix(in srgb, var(--qc-warning) 45%, transparent); }
+.qc-tel[data-state="OFFLINE"] { color: var(--qc-text-faint); }
+.qc-tel[data-state="UNKNOWN"] { color: var(--qc-text-faint); }
+.qc-tel[data-state="LIVE"] .qc-dot { animation: qc-blink 2s steps(2, start) infinite; }
+
+/* Container-level state: dims every instrumented value inside it. */
+.qc-tel-scope[data-state="STALE"]   .qc-tel-val { opacity: 0.55; }
+.qc-tel-scope[data-state="OFFLINE"] .qc-tel-val { opacity: 0.4; }
+.qc-tel-scope[data-state="LIVE"]    .qc-tel-val { opacity: 1; }
+.qc-tel-val { transition: opacity 0.2s; }
+
+/* Warning strip — surfaces impossible readings instead of hiding them. */
+.qc-tel-warn { display: flex; align-items: flex-start; gap: 8px; font-family: var(--qc-font-mono);
+  font-size: 11px; line-height: 1.5; color: var(--qc-warning);
+  background: color-mix(in srgb, var(--qc-warning) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--qc-warning) 30%, transparent);
+  border-radius: var(--qc-radius); padding: 8px 10px; }
+.qc-tel-warn-icon { flex: none; font-weight: 700; }
+.qc-tel-scope[data-state="STALE"]   [data-tel-val],
+.qc-tel-scope[data-state="OFFLINE"] [data-tel-val] { opacity: 0.45; }
+.qc-tel-scope[data-state="UNKNOWN"] [data-tel-val] { opacity: 0.6; }
+[data-tel-val] { transition: opacity 0.2s; }

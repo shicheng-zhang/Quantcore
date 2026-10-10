@@ -31,12 +31,126 @@ async def simulate_execution(req: ExecutionRequest):
         return {"error": str(e)}
 
 
+NEXUS_BIN = os.path.join(BASE_DIR, "nexus", "build", "nexus_core")
+LOG_FILE = os.path.join(BASE_DIR, "data", "runtime", "nexus.log")
+LIVE_JSON = os.path.join(BASE_DIR, "data", "nexus_live.json")
+STATIC_JSON = os.path.join(BASE_DIR, "data", "nexus_telemetry.json")
+SUPERVISOR_STATE = os.path.join(BASE_DIR, "data", "runtime", "supervisor.json")
+
+# The engine rewrites telemetry every ~1s. Anything older than this is either a
+# crashed engine or a file left behind by an earlier run — either way it must
+# not be presented as live.
+TELEMETRY_LIVE_WINDOW_S = 5.0
+TELEMETRY_STALE_AFTER_S = 60.0
+
+# Engine's own documented bound for dark-pool price improvement
+# (see nexus/include/institutional_ops.h: 0.5 + U(0,1.5) bps).
+DARK_IMPROVEMENT_MIN_BPS = 0.5
+DARK_IMPROVEMENT_MAX_BPS = 2.0
+
+
+def _humanize_age(seconds: float) -> str:
+    if seconds < 1:
+        return "now"
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m"
+    if seconds < 86400:
+        return f"{seconds / 3600:.1f}h"
+    return f"{seconds / 86400:.1f}d"
+
+
+def _engine_process_alive() -> bool | None:
+    """Is nexus running under the supervisor?
+
+    Returns None when there is no supervisor state at all, which means "not
+    managed here" rather than a confident "not running".
+    """
+    try:
+        with open(SUPERVISOR_STATE, encoding="utf-8") as f:
+            state = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    service = state.get("nexus")
+    if not service:
+        return False
+    pid = service.get("pid")
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _audit_telemetry(payload: dict, age_s: float) -> dict:
+    """Flag values that cannot be produced by the engine.
+
+    Silently clamping impossible readings would hide a real defect; reporting
+    them keeps the operator informed. Mutates and returns the payload.
+    """
+    warnings: list[str] = []
+
+    imp = payload.get("dark_improvement")
+    if isinstance(imp, (int, float)) and not (
+        DARK_IMPROVEMENT_MIN_BPS <= imp <= DARK_IMPROVEMENT_MAX_BPS
+    ):
+        warnings.append(
+            f"dark_improvement={imp}bps is outside the engine range "
+            f"[{DARK_IMPROVEMENT_MIN_BPS}, {DARK_IMPROVEMENT_MAX_BPS}] bps"
+        )
+
+    bid, ask = payload.get("best_bid"), payload.get("best_ask")
+    if isinstance(bid, (int, float)) and isinstance(ask, (int, float)):
+        if bid >= ask:
+            warnings.append(f"crossed book: best_bid={bid} >= best_ask={ask}")
+        if bid <= 0 or ask <= 0:
+            warnings.append(f"non-positive quote: bid={bid} ask={ask}")
+
+    lat = payload.get("latency_ns_mean")
+    if isinstance(lat, (int, float)) and lat and lat < 0:
+        warnings.append(f"negative latency_ns_mean={lat}")
+
+    if age_s > TELEMETRY_STALE_AFTER_S:
+        warnings.append(f"telemetry is {_humanize_age(age_s)} old — engine is not writing")
+
+    payload["warnings"] = warnings
+    payload["telemetry_age_s"] = round(age_s, 1)
+    payload["telemetry_age_human"] = _humanize_age(age_s)
+    payload["telemetry_state"] = (
+        "LIVE" if age_s <= TELEMETRY_LIVE_WINDOW_S
+        else ("STALE" if age_s <= TELEMETRY_STALE_AFTER_S else "OFFLINE")
+    )
+    running = _engine_process_alive()
+    payload["engine_managed"] = running if running is not None else False
+    payload["engine_running"] = bool(running)
+    payload["sor_dark_pct"] = payload.get("sor_dark_pct", 0.30)
+    return payload
+
+
 @router.get("/api/nexus/telemetry")
 async def get_nexus_telemetry():
     path = LIVE_JSON if os.path.exists(LIVE_JSON) else STATIC_JSON
     if not os.path.exists(path):
-        return {"status": "IDLE", "message": "Engine has not been run yet."}
-    return read_json(path, {"status": "DEGRADED", "message": "Telemetry is being updated; retry shortly."})
+        return {
+            "status": "IDLE",
+            "message": "Engine has not been run yet.",
+            "telemetry_state": "OFFLINE",
+            "telemetry_age_human": "never",
+            "engine_running": False,
+            "sor_dark_pct": 0.30,
+            "warnings": ["no telemetry file on disk"],
+        }
+    payload = read_json(path, {"status": "DEGRADED", "message": "Telemetry is being updated; retry shortly."})
+    if not isinstance(payload, dict):
+        return {"status": "ERROR", "message": "telemetry payload is not an object", "warnings": ["malformed telemetry"]}
+    try:
+        age_s = max(0.0, time.time() - os.path.getmtime(path))
+    except OSError:
+        age_s = float("inf")
+    return await asyncio.to_thread(_audit_telemetry, payload, age_s)
 
 
 @router.post("/api/nexus/start")
