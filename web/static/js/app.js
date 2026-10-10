@@ -196,6 +196,7 @@ function initCommandPalette() {
 
   let filtered = [...commands];
   let idx = 0;
+  let symbolsLoaded = false;
 
   function render() {
     list.innerHTML = '';
@@ -212,26 +213,51 @@ function initCommandPalette() {
       div.className = 'qc-cmd-item' + (i===idx ? ' active' : '');
       div.setAttribute('role','option');
       div.setAttribute('aria-selected', String(i===idx));
-      div.innerHTML = `<span class="flex-1 text-sm text-white">${c.name}</span><span class="text-xs text-slate-500 font-mono">${c.keys||''}</span>`;
+      const danger = c.tone === 'warn' ? '<span class="qc-cmd-hint" style="color:var(--qc-warning)">! </span>' : '';
+      const usage = c.tone ? `<span class="qc-cmd-usage">${c.keys||''}</span>` : `<span class="text-xs text-slate-500 font-mono">${c.keys||''}</span>`;
+      div.innerHTML = `<span class="flex-1 text-sm text-white">${danger}${c.name}</span>${usage}`;
       div.addEventListener('click', () => { c.action(); close(); });
       list.appendChild(div);
     });
     document.getElementById('cmdk-count').textContent = `${filtered.length} commands`;
   }
 
-  function open() {
+  function open(seed) {
     cmdk.classList.remove('hidden');
-    input.value = '';
-    filtered = [...commands];
-    // Inject symbols dynamically
-    fetch('/api/symbols').then(r=>r.json()).then(syms => {
-      if (Array.isArray(syms)) {
-        syms.slice(0,10).forEach(s => commands.push({ id:`sym-${s}`, name:`Jump to ${s} → Trends`, action:()=> location.href=`/trends?symbol=${s}`, group:'Symbols' }));
-      }
-    }).catch(()=>{});
+    input.value = seed || '';
+    filtered = filterCommands(input.value);
+    // Inject symbols dynamically (once — repeated opens were duplicating them)
+    if (!symbolsLoaded) {
+      symbolsLoaded = true;
+      fetch('/api/symbols').then(r=>r.json()).then(syms => {
+        if (Array.isArray(syms)) {
+          syms.slice(0,10).forEach(s => commands.push({ id:`sym-${s}`, name:`Jump to ${s} → Trends`, action:()=> location.href=`/trends?symbol=${s}`, group:'Symbols' }));
+          filtered = filterCommands(input.value); render();
+        }
+      }).catch(()=>{ symbolsLoaded = false; });
+    }
     idx = 0; render(); setTimeout(()=>input.focus(), 50);
   }
   function close() { cmdk.classList.add('hidden'); }
+
+  // "/" is an alias for ">": both mean "I am running a command, not searching".
+  function filterCommands(q) {
+    const v = q.toLowerCase();
+    if (v.startsWith('>') || v.startsWith('/')) {
+      const qq = v.slice(1).trim();
+      return commands.filter(c=> c.name.toLowerCase().includes(qq) || c.id.includes(qq));
+    }
+    if (!v) return [...commands];
+    return commands.filter(c=> c.name.toLowerCase().includes(v) || (c.keys&&c.keys.toLowerCase().includes(v)));
+  }
+
+  // Palette is opened on boot, so console.js can append engine commands.
+  window.__qcPalette = {
+    register(cmds) { commands.push(...cmds); filtered = filterCommands(input.value); render(); },
+    open: (seed) => open(seed),
+    close,
+    commands: () => commands.slice(),
+  };
 
   trigger?.addEventListener('click', open);
   backdrop?.addEventListener('click', close);
@@ -240,12 +266,7 @@ function initCommandPalette() {
     if (e.key==='Escape' && !cmdk.classList.contains('hidden')) { e.preventDefault(); close(); }
   });
   input.addEventListener('input', () => {
-    const q = input.value.toLowerCase();
-    if (q.startsWith('>')) {
-      const qq = q.slice(1).trim();
-      filtered = commands.filter(c=> c.name.toLowerCase().includes(qq) || c.id.includes(qq));
-    } else if (!q) filtered = [...commands];
-    else filtered = commands.filter(c=> c.name.toLowerCase().includes(q) || (c.keys&&c.keys.toLowerCase().includes(q)));
+    filtered = filterCommands(input.value);
     idx = 0; render();
   });
   input.addEventListener('keydown', (e) => {

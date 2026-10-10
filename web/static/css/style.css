@@ -178,3 +178,71 @@ body[data-mode="learn"] [data-term]:hover { color: #bfdbfe; }
   .gap-6 { gap: 2.5rem !important; }
   .js-plotly-plot { max-height: 650px; }
 }
+
+/* ——— Operator Console ———
+   Functional layer styling: audit chip, fill tape, command output.
+   Deliberately flat and monospace — this is instrumentation, not decoration. */
+
+/* Audit telemetry chip in the status bar */
+.qc-audit-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--qc-font-mono); font-size: 11px; letter-spacing: -0.01em;
+  padding: 1px 7px; border-radius: 4px; border: 1px solid transparent;
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+.qc-audit-chip:hover { background: var(--qc-surface-hover); }
+.qc-audit-chip[data-state="unknown"] { color: var(--qc-text-faint); border-color: var(--qc-border); }
+.qc-audit-chip[data-state="ok"]      { color: var(--qc-success); border-color: color-mix(in srgb, var(--qc-success) 35%, transparent); }
+.qc-audit-chip[data-state="broken"]  { color: var(--qc-danger);  border-color: color-mix(in srgb, var(--qc-danger) 45%, transparent); }
+.qc-audit-chip[data-state="checking"]{ color: var(--qc-text-muted); border-color: var(--qc-border); }
+.qc-audit-chip .qc-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.qc-audit-chip[data-state="checking"] .qc-dot { animation: qc-blink 0.9s steps(2, start) infinite; }
+@keyframes qc-blink { 50% { opacity: 0.25; } }
+
+/* Live tape / telemetry console */
+.qc-tape {
+  position: fixed; left: 0; right: 0; bottom: 28px; z-index: 30;
+  display: flex; align-items: center; gap: 0;
+  background: color-mix(in srgb, var(--qc-bg-elevated) 96%, transparent);
+  border-top: 1px solid var(--qc-border);
+  font-family: var(--qc-font-mono); font-size: 11px; line-height: 1.6;
+  height: 22px; overflow: hidden; backdrop-filter: blur(4px);
+}
+.qc-tape-label {
+  flex: none; padding: 0 8px; height: 100%; display: flex; align-items: center; gap: 6px;
+  border-right: 1px solid var(--qc-border); color: var(--qc-text-faint);
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px;
+}
+.qc-tape-label .qc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--qc-text-faint); }
+.qc-tape.live .qc-tape-label .qc-dot { background: var(--qc-success); animation: qc-blink 2s steps(2, start) infinite; }
+.qc-tape-strip { flex: 1; overflow: hidden; white-space: nowrap; padding: 0 10px; }
+.qc-tape-row { display: inline-flex; gap: 18px; align-items: baseline; }
+.qc-tape-item { color: var(--qc-text-muted); }
+.qc-tape-item.buy  { color: var(--qc-success); }
+.qc-tape-item.sell { color: var(--qc-danger); }
+.qc-tape-item.ok   { color: var(--qc-text-muted); }
+.qc-tape-item.warn { color: var(--qc-warning); }
+.qc-tape-item.err,
+.qc-tape-item.error { color: var(--qc-danger); }
+.qc-tape-item.sys  { color: var(--qc-accent); }
+.qc-tape-meta { flex: none; display: flex; gap: 12px; padding: 0 10px; border-left: 1px solid var(--qc-border); color: var(--qc-text-faint); }
+.qc-tape-meta b { color: var(--qc-text-muted); font-weight: 500; }
+
+/* Command console output panel (used by the command bar) */
+.qc-console {
+  font-family: var(--qc-font-mono); font-size: 12px; line-height: 1.55;
+  background: var(--qc-surface); border: 1px solid var(--qc-border); border-radius: var(--qc-radius);
+  overflow: auto; max-height: 60vh;
+}
+.qc-out { border-bottom: 1px solid var(--qc-border); }
+.qc-out:last-child { border-bottom: 0; }
+.qc-out-head { padding: 6px 10px; color: var(--qc-text-muted); border-bottom: 1px solid var(--qc-border);
+  background: var(--qc-bg-elevated); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.qc-out pre { margin: 0; padding: 10px; white-space: pre-wrap; word-break: break-word; color: var(--qc-text); }
+.qc-out.ok .qc-out-head  { color: var(--qc-success); }
+.qc-out.bad .qc-out-head { color: var(--qc-danger); }
+
+/* Command bar input (rendered inside the palette) */
+#cmdk-input.is-command { font-family: var(--qc-font-mono); color: var(--qc-success); }
+.qc-cmd-hint { font-family: var(--qc-font-mono); font-size: 10px; color: var(--qc-text-faint); }
+#cmdk-list .qc-cmd-item .qc-cmd-usage { font-family: var(--qc-font-mono); font-size: 10px; color: var(--qc-accent); }

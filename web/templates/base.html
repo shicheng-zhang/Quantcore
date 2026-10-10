@@ -186,11 +186,33 @@
         <span class="hidden xl:inline">•</span>
         <a href="https://github.com/anomalyco/opencode" target="_blank" rel="noopener" class="hidden xl:inline hover:text-slate-300">Muse Spark</a>
         <span class="ml-auto flex items-center gap-3">
+            <span id="footer-latency" class="hidden xl:inline font-mono" title="Backend round-trip">—</span>
+            <span id="footer-audit" class="qc-audit-chip" data-state="unknown" role="button" tabindex="0"
+                  title="Audit ledger integrity — click to re-verify"><span class="qc-dot"></span><span id="footer-audit-text">AUDIT</span></span>
             <span id="footer-symbols" class="hidden md:inline">—</span>
             <span id="footer-time" class="font-mono">--:--:-- UTC</span>
             <button id="footer-density" class="hover:text-slate-200" title="Toggle density">◫</button>
         </span>
     </footer>
+
+    <!-- LIVE FILL TAPE / TELEMETRY STRIP -->
+    <div id="qc-tape" class="qc-tape" role="status" aria-live="polite" aria-label="Live execution telemetry">
+        <span class="qc-tape-label"><span class="qc-dot"></span>tape</span>
+        <span class="qc-tape-strip"><span class="qc-tape-row" id="qc-tape-row"></span></span>
+        <span class="qc-tape-meta">
+            <span>msg <b id="qc-tape-msgs">0</b></span>
+            <span class="hidden sm:inline">rtt <b id="qc-tape-rtt">—</b></span>
+        </span>
+    </div>
+
+    <!-- OPERATOR CONSOLE (command output) -->
+    <div id="qc-console-wrap" class="fixed bottom-[50px] left-3 z-30 hidden" style="width:min(560px,calc(100vw - 24px));">
+        <div class="flex items-center justify-between px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500">
+            <span>operator console</span>
+            <button id="qc-console-close" class="hover:text-slate-300" aria-label="Close console">✕</button>
+        </div>
+        <div id="qc-console" class="qc-console qc-scrollbar"></div>
+    </div>
 
     <!-- COMMAND PALETTE -->
     <div id="cmdk" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-label="Command palette">
@@ -252,6 +274,8 @@
     <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 hidden lg:hidden"></div>
 
     <script src="/static/js/app.js?v=1.1.1"></script>
+    <script src="/static/js/console.js?v=1.2.0"></script>
+    <script src="/static/js/console-init.js?v=1.2.0"></script>
     {% block scripts %}{% endblock %}
 
     <!-- Wiki / Edu Drawer (preserved) -->
